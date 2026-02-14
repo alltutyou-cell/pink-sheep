@@ -283,7 +283,7 @@ photoContainer.className = 'photo-container';
 document.body.appendChild(photoContainer);
 
 // Configuration - easily add more here!
-const totalPhotos = 10; // Try files 1.jpg to 10.jpg
+const totalPhotos = 27; // Try files 1.jpg to 10.jpg
 const photoFolder = 'photos/';
 
 function createFloatingPhoto() {
