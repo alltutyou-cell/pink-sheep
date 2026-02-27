@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Инвестиционный калькулятор — Сколько ты потеряешь, откладывая на потом?</title>
+    <meta name="description" content="Узнай, сколько денег ты теряешь каждый месяц промедления. Интерактивный калькулятор финансовой свободы.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for the wealth curve -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --pink: #e91e8c;
+            --pink-light: #ff69b4;
+            --pink-pale: #ffe4f0;
+            --pink-bg: #fff0f7;
+            --dark: #1a0a10;
+            --green: #22c55e;
+            --gold: #f5c518;
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: var(--dark);
+            color: white;
+            min-height: 100vh;
+        }
+
+        /* === HERO === */
+        .hero {
+            background: linear-gradient(135deg, #1a0a10 0%, #2d0520 100%);
+            border-bottom: 4px solid var(--pink);
+            padding: clamp(40px, 8vw, 80px) 20px clamp(40px, 6vw, 64px);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50px; left: 50%;
+            transform: translateX(-50%);
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(233,30,140,0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-eyebrow {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--pink-light);
+            margin-bottom: 16px;
+            border: 1.5px solid var(--pink-light);
+            padding: 4px 16px;
+            border-radius: 99px;
+        }
+
+        .hero h1 {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.8rem, 6vw, 3.2rem);
+            line-height: 1.2;
+            margin-bottom: 16px;
+            color: white;
+        }
+
+        .hero h1 em {
+            color: var(--pink);
+            font-style: normal;
+        }
+
+        .hero p {
+            font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+            font-weight: 600;
+            opacity: 0.7;
+            max-width: 560px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* === CALCULATOR SECTION === */
+        .calc-section {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: clamp(32px, 6vw, 64px) 20px;
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 640px) {
+            .calc-grid { grid-template-columns: 1fr; }
+        }
+
+        .calc-card {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .calc-card label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--pink-light);
+            margin-bottom: 12px;
+        }
+
+        .slider-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .slider-value {
+            font-family: 'Pacifico', cursive;
+            font-size: 2rem;
+            color: var(--pink);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 99px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            background: var(--pink);
+            border: 3px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(233,30,140,0.5);
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            font-weight: 700;
+            opacity: 0.35;
+        }
+
+        /* === RESULTS STRIP === */
+        .results-strip {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 480px) {
+            .results-strip { grid-template-columns: 1fr; }
+        }
+
+        .result-box {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            padding: 20px 16px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        .result-box.highlight {
+            border-color: var(--pink);
+            background: rgba(233,30,140,0.1);
+        }
+
+        .result-box .label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0.5;
+            margin-bottom: 8px;
+        }
+
+        .result-box .value {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.4rem, 4vw, 1.9rem);
+            color: var(--pink);
+            line-height: 1;
+        }
+
+        .result-box .sub {
+            font-size: 0.7rem;
+            font-weight: 600;
+            opacity: 0.4;
+            margin-top: 6px;
+        }
+
+        /* === CHART === */
+        .chart-wrapper {
+            background: rgba(255,255,255,0.04);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 28px 20px 20px;
+            margin-bottom: 32px;
+        }
+
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .chart-legend {
+            display: flex;
+            gap: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            opacity: 0.7;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .chart-canvas-wrap {
+            height: 320px;
+            position: relative;
+        }
+
+        /* === LOSS BANNER === */
+        .loss-banner {
+            background: linear-gradient(135deg, rgba(233,30,140,0.2), rgba(233,30,140,0.05));
+            border: 2px solid var(--pink);
+            border-radius: 16px;
+            padding: 28px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .loss-banner .loss-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--pink-light);
+            margin-bottom: 8px;
+        }
+
+        .loss-banner .loss-amount {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(2.2rem, 7vw, 3.5rem);
+            color: var(--pink);
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+
+        .loss-banner .loss-desc {
+            font-size: 0.9rem;
+            font-weight: 600;
+            opacity: 0.65;
+            line-height: 1.5;
+        }
+
+        /* === CTA === */
+        .cta-section {
+            text-align: center;
+            padding: clamp(32px, 6vw, 64px) 20px;
+            border-top: 2px solid rgba(255,255,255,0.08);
+            background: rgba(233,30,140,0.06);
+        }
+
+        .cta-section h2 {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            margin-bottom: 12px;
+            color: white;
+        }
+
+        .cta-section h2 em {
+            color: var(--pink);
+            font-style: normal;
+        }
+
+        .cta-section p {
+            font-size: 1rem;
+            font-weight: 600;
+            opacity: 0.6;
+            max-width: 480px;
+            margin: 0 auto 28px;
+            line-height: 1.6;
+        }
+
+        .cta-btn-main {
+            display: inline-block;
+            padding: 18px 40px;
+            background: var(--pink);
+            color: white;
+            border: 3px solid white;
+            border-radius: 14px;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 6px 6px 0px rgba(255,255,255,0.2);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .cta-btn-main:hover {
+            transform: translate(3px, 3px);
+            box-shadow: 3px 3px 0px rgba(255,255,255,0.2);
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--pink-light);
+            text-decoration: none;
+            opacity: 0.6;
+        }
+
+        .back-link:hover { opacity: 1; }
+
+        /* Disclaimer */
+        .disclaimer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.68rem;
+            opacity: 0.3;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-eyebrow">💸 Финансовый калькулятор</div>
+        <h1>Сколько ты теряешь,<br><em>откладывая на потом?</em></h1>
+        <p>Вводи свои цифры — и смотри, как работают даже 10$ в месяц со временем.</p>
+    </section>
+
+    <!-- CALCULATOR -->
+    <div class="calc-section">
+
+        <!-- Sliders -->
+        <div class="calc-grid">
+            <div class="calc-card">
+                <label>💵 Сколько ты готова инвестировать в месяц?</label>
+                <div class="slider-wrapper">
+                    <div class="slider-value" id="monthlyVal">$10</div>
+                    <input type="range" id="monthlySlider" min="10" max="500" step="10" value="10" oninput="updateCalc()">
+                    <div class="slider-labels"><span>$10</span><span>$500</span></div>
+                </div>
+            </div>
+
+            <div class="calc-card">
+                <label>📅 Сколько лет ты готова инвестировать?</label>
+                <div class="slider-wrapper">
+                    <div class="slider-value" id="yearsVal">10 лет</div>
+                    <input type="range" id="yearsSlider" min="1" max="30" step="1" value="10" oninput="updateCalc()">
+                    <div class="slider-labels"><span>1 год</span><span>30 лет</span></div>
+                </div>
+            </div>
+
+            <div class="calc-card">
+                <label>📈 Средняя доходность в год (%)</label>
+                <div class="slider-wrapper">
+                    <div class="slider-value" id="rateVal">8%</div>
+                    <input type="range" id="rateSlider" min="3" max="15" step="0.5" value="8" oninput="updateCalc()">
+                    <div class="slider-labels"><span>3%</span><span>15%</span></div>
+                </div>
+            </div>
+
+            <div class="calc-card">
+                <label>⏳ Если подождать ещё... (месяцев)</label>
+                <div class="slider-wrapper">
+                    <div class="slider-value" id="waitVal">12 мес.</div>
+                    <input type="range" id="waitSlider" min="1" max="36" step="1" value="12" oninput="updateCalc()">
+                    <div class="slider-labels"><span>1 мес.</span><span>36 мес.</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result boxes -->
+        <div class="results-strip">
+            <div class="result-box">
+                <div class="label">Ты вложишь всего</div>
+                <div class="value" id="totalInvested">$1,200</div>
+                <div class="sub">твои реальные деньги</div>
+            </div>
+            <div class="result-box highlight">
+                <div class="label">💰 Итоговая сумма</div>
+                <div class="value" id="finalAmount">$18,295</div>
+                <div class="sub">с учётом сложного %</div>
+            </div>
+            <div class="result-box">
+                <div class="label">📈 Прибыль от инвестиций</div>
+                <div class="value" id="totalProfit">$17,095</div>
+                <div class="sub">деньги, которые работали</div>
+            </div>
+        </div>
+
+        <!-- Loss banner -->
+        <div class="loss-banner">
+            <div class="loss-label">❌ Цена промедления</div>
+            <div class="loss-amount" id="lossAmount">$2,100</div>
+            <div class="loss-desc" id="lossDesc">
+                Если ты подождёшь ещё 12 месяцев — ты потеряешь <strong>$2,100</strong> потенциальной прибыли.
+                Каждый месяц промедления стоит тебе денег, которых ты никогда не вернёшь.
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-wrapper">
+            <div class="chart-header">
+                <div class="chart-title">📊 Рост твоих инвестиций по годам</div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: var(--pink)"></div>
+                        <span>С инвестициями сейчас</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: rgba(255,255,255,0.3)"></div>
+                        <span>Если ждать</span>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-canvas-wrap">
+                <canvas id="wealthChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <h2>Начни сегодня.<br><em>Не завтра.</em></h2>
+        <p>Твои деньги уже должны работать. Узнай, как начать инвестировать с 10$ — без опыта и без риска потерять всё.</p>
+        <a href="quiz-ru.html" class="cta-btn-main">Пройди тест и получи план →</a>
+        <a href="index.html" class="back-link">← Вернуться на главную</a>
+    </section>
+
+    <div class="disclaimer">
+        * Расчёты носят иллюстративный характер. Реальная доходность зависит от выбранных инструментов и рыночных условий.
+    </div>
+
+    <script>
+        let chart;
+
+        function compound(monthly, years, rate) {
+            const r = rate / 100 / 12;
+            const n = years * 12;
+            if (r === 0) return monthly * n;
+            return monthly * (Math.pow(1 + r, n) - 1) / r * (1 + r);
+        }
+
+        function fmt(n) {
+            if (n >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'М';
+            if (n >= 1000) return '$' + Math.round(n / 100) * 100 >= 10000
+                ? '$' + (n / 1000).toFixed(0) + 'K'
+                : '$' + n.toLocaleString('ru-RU');
+            return '$' + Math.round(n).toLocaleString('ru-RU');
+        }
+
+        function fmtFull(n) {
+            return '$' + Math.round(n).toLocaleString('ru-RU');
+        }
+
+        function updateCalc() {
+            const monthly = parseFloat(document.getElementById('monthlySlider').value);
+            const years = parseInt(document.getElementById('yearsSlider').value);
+            const rate = parseFloat(document.getElementById('rateSlider').value);
+            const waitMonths = parseInt(document.getElementById('waitSlider').value);
+
+            // Update labels
+            document.getElementById('monthlyVal').textContent = '$' + monthly;
+            document.getElementById('yearsVal').textContent = years + (years === 1 ? ' год' : years < 5 ? ' года' : ' лет');
+            document.getElementById('rateVal').textContent = rate + '%';
+            document.getElementById('waitVal').textContent = waitMonths + ' мес.';
+
+            // Calculations
+            const total = compound(monthly, years, rate);
+            const invested = monthly * years * 12;
+            const profit = total - invested;
+
+            // If started waitMonths later (losing those months of compounding)
+            const laterYears = years - waitMonths / 12;
+            const totalLater = laterYears > 0 ? compound(monthly, laterYears, rate) : 0;
+            const loss = total - totalLater;
+
+            document.getElementById('totalInvested').textContent = fmtFull(invested);
+            document.getElementById('finalAmount').textContent = fmtFull(total);
+            document.getElementById('totalProfit').textContent = fmtFull(profit);
+            document.getElementById('lossAmount').textContent = fmtFull(Math.max(0, loss));
+            document.getElementById('lossDesc').innerHTML =
+                `Если ты подождёшь ещё <strong>${waitMonths} ${waitMonths === 1 ? 'месяц' : waitMonths < 5 ? 'месяца' : 'месяцев'}</strong> — ты потеряешь <strong>${fmtFull(Math.max(0, loss))}</strong> потенциальной прибыли.<br>Каждый месяц промедления стоит тебе денег, которых ты никогда не вернёшь.`;
+
+            updateChart(monthly, years, rate, waitMonths);
+        }
+
+        function updateChart(monthly, years, rate, waitMonths) {
+            const labels = [];
+            const nowData = [];
+            const laterData = [];
+
+            for (let y = 0; y <= years; y++) {
+                labels.push(y === 0 ? 'Сейчас' : `${y} ${y === 1 ? 'год' : y < 5 ? 'года' : 'лет'}`);
+                nowData.push(Math.round(compound(monthly, y, rate)));
+                // Later scenario: starts investing after waitMonths
+                const effectiveYears = Math.max(0, y - waitMonths / 12);
+                laterData.push(Math.round(compound(monthly, effectiveYears, rate)));
+            }
+
+            if (chart) {
+                chart.data.labels = labels;
+                chart.data.datasets[0].data = nowData;
+                chart.data.datasets[1].data = laterData;
+                chart.update('none');
+            } else {
+                const ctx = document.getElementById('wealthChart').getContext('2d');
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: 'Начать сейчас',
+                                data: nowData,
+                                borderColor: '#e91e8c',
+                                backgroundColor: 'rgba(233,30,140,0.15)',
+                                borderWidth: 3,
+                                pointBackgroundColor: '#e91e8c',
+                                pointRadius: 4,
+                                fill: true,
+                                tension: 0.4
+                            },
+                            {
+                                label: 'Если ждать',
+                                data: laterData,
+                                borderColor: 'rgba(255,255,255,0.3)',
+                                backgroundColor: 'rgba(255,255,255,0.05)',
+                                borderWidth: 2,
+                                borderDash: [6, 4],
+                                pointBackgroundColor: 'rgba(255,255,255,0.3)',
+                                pointRadius: 3,
+                                fill: true,
+                                tension: 0.4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 300 },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1a0a10',
+                                borderColor: '#e91e8c',
+                                borderWidth: 1,
+                                titleColor: '#ff69b4',
+                                bodyColor: 'white',
+                                padding: 12,
+                                callbacks: {
+                                    label: ctx => ' ' + ctx.dataset.label + ': $' + ctx.raw.toLocaleString('ru-RU')
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255,255,255,0.06)' },
+                                ticks: { color: 'rgba(255,255,255,0.4)', font: { weight: '700', size: 11 } }
+                            },
+                            y: {
+                                grid: { color: 'rgba(255,255,255,0.06)' },
+                                ticks: {
+                                    color: 'rgba(255,255,255,0.4)',
+                                    font: { weight: '700', size: 11 },
+                                    callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'K' : v)
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Init
+        updateCalc();
+    </script>
+</body>
+</html>

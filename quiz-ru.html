@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Твой тип финансовой свободы — Тест</title>
+    <meta name="description" content="Узнай, что мешает тебе стать финансово независимой. Пройди тест и получи персональный план.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --pink: #e91e8c;
+            --pink-light: #ff69b4;
+            --pink-pale: #ffe4f0;
+            --pink-bg: #fff0f7;
+            --dark: #1a0a10;
+            --accent: #ff4a22;
+            --gold: #f5c518;
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: var(--pink-bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Floating hearts background */
+        .hearts-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .heart-float {
+            position: absolute;
+            font-size: 20px;
+            opacity: 0.15;
+            animation: floatHeart linear infinite;
+        }
+
+        @keyframes floatHeart {
+            0% { transform: translateY(110vh) rotate(0deg); opacity: 0.15; }
+            100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* Quiz container */
+        .quiz-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .quiz-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .quiz-header h1 {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.4rem, 5vw, 2rem);
+            color: var(--pink);
+            line-height: 1.3;
+            margin-bottom: 8px;
+        }
+
+        .quiz-header p {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--dark);
+            opacity: 0.5;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        /* Progress bar */
+        .progress-bar-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(233, 30, 140, 0.15);
+            border-radius: 99px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--pink), var(--pink-light));
+            border-radius: 99px;
+            transition: width 0.5s ease;
+        }
+
+        /* Card */
+        .quiz-card {
+            background: white;
+            border: 3px solid var(--dark);
+            border-radius: 20px;
+            padding: clamp(24px, 6vw, 48px);
+            box-shadow: 8px 8px 0px var(--pink);
+            min-height: 420px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quiz-card::before {
+            content: '';
+            position: absolute;
+            top: -2px; right: -2px;
+            width: 80px; height: 80px;
+            background: var(--pink-pale);
+            border-radius: 0 20px 0 80px;
+        }
+
+        .step-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--pink);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 20px;
+        }
+
+        .question-text {
+            font-size: clamp(1.5rem, 5vw, 2.2rem);
+            font-weight: 700;
+            color: var(--dark);
+            line-height: 1.25;
+            margin-bottom: 28px;
+        }
+
+        .question-text em {
+            color: var(--pink);
+            font-style: normal;
+        }
+
+        /* Answer buttons */
+        .answers-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .answer-btn {
+            width: 100%;
+            text-align: left;
+            padding: 16px 20px;
+            border: 2.5px solid var(--dark);
+            border-radius: 12px;
+            background: white;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--dark);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .answer-btn:hover {
+            background: var(--pink);
+            color: white;
+            border-color: var(--pink);
+            transform: translateX(4px);
+        }
+
+        .answer-btn .arrow {
+            font-size: 1.2rem;
+            transition: transform 0.2s;
+        }
+
+        .answer-btn:hover .arrow {
+            transform: translateX(6px);
+        }
+
+        /* Tip box */
+        .tip-box {
+            margin-top: 20px;
+            padding: 12px 16px;
+            background: var(--pink-pale);
+            border-left: 4px solid var(--pink);
+            border-radius: 0 8px 8px 0;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--dark);
+            opacity: 0.85;
+        }
+
+        /* Analyzing loader */
+        .analyzing-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 20px;
+            padding: 40px 0;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid var(--pink-pale);
+            border-top-color: var(--pink);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .analyzing-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .analyzing-status {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--pink);
+            font-style: italic;
+            min-height: 1.4em;
+        }
+
+        .progress-fake {
+            width: 100%;
+            height: 8px;
+            background: var(--pink-pale);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .progress-fake-fill {
+            height: 100%;
+            background: var(--pink);
+            border-radius: 99px;
+            animation: loadFake 4s ease-in-out forwards;
+        }
+
+        @keyframes loadFake {
+            0% { width: 0%; }
+            30% { width: 45%; }
+            60% { width: 70%; }
+            85% { width: 88%; }
+            100% { width: 100%; }
+        }
+
+        /* Result screen */
+        .result-screen {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .result-badge {
+            display: inline-block;
+            background: var(--pink);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 14px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 4px;
+        }
+
+        .result-type {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.6rem, 6vw, 2.4rem);
+            color: var(--pink);
+            line-height: 1.2;
+        }
+
+        .result-desc {
+            font-size: 1rem;
+            font-weight: 600;
+            line-height: 1.6;
+            color: var(--dark);
+            opacity: 0.85;
+        }
+
+        .result-divider {
+            border: none;
+            border-top: 2px dashed var(--pink-light);
+        }
+
+        .result-path-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            opacity: 0.45;
+            margin-bottom: 8px;
+        }
+
+        .result-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .result-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+
+        .step-num {
+            min-width: 28px;
+            height: 28px;
+            background: var(--pink);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* Lead capture form */
+        .lead-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 24px;
+            background: var(--pink-pale);
+            border: 2px solid var(--pink);
+            border-radius: 16px;
+        }
+
+        .lead-form h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-align: center;
+            color: var(--dark);
+        }
+
+        .lead-form input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2.5px solid var(--dark);
+            border-radius: 10px;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            outline: none;
+            background: white;
+            transition: border-color 0.2s;
+        }
+
+        .lead-form input:focus {
+            border-color: var(--pink);
+        }
+
+        .cta-btn {
+            width: 100%;
+            padding: 18px;
+            background: var(--pink);
+            color: white;
+            border: 3px solid var(--dark);
+            border-radius: 12px;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 4px 4px 0px var(--dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .cta-btn:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px var(--dark);
+        }
+
+        .cta-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: none;
+        }
+
+        .privacy-note {
+            text-align: center;
+            font-size: 0.72rem;
+            font-weight: 600;
+            opacity: 0.35;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        /* Social proof footer */
+        .social-proof {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            opacity: 0.4;
+            color: var(--dark);
+        }
+
+        /* Slide animation */
+        .slide-in {
+            animation: slideIn 0.4s ease forwards;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .fade-in {
+            animation: fadeInScale 0.5s ease forwards;
+        }
+
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Floating hearts -->
+    <div class="hearts-bg" id="heartsBg"></div>
+
+    <div class="quiz-wrapper">
+        <!-- Header -->
+        <div class="quiz-header" id="quizHeader">
+            <h1>💕 Какой ты тип финансовой свободы?</h1>
+            <p>Анализируем твой финансовый профиль в реальном времени</p>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress-bar-track" id="progressTrack">
+            <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+
+        <!-- Main card -->
+        <div class="quiz-card" id="quizCard">
+            <!-- Steps rendered here by JS -->
+        </div>
+
+        <!-- Social proof -->
+        <div class="social-proof" id="socialProof">
+            Уже прошли более 3 000 женщин · Начни с 10$/месяц
+        </div>
+    </div>
+
+    <script>
+        // === DATA ===
+        const questions = [
+            {
+                step: "ШАГ 01",
+                icon: "💭",
+                q: "Когда ты думаешь о деньгах, что тебя пугает БОЛЬШЕ всего?",
+                answers: [
+                    { text: "Потерять всё — инвестиции кажутся риском", value: "burned" },
+                    { text: "Не знаю, с чего начать — всё слишком сложно", value: "overwhelmed" },
+                    { text: "Кажется, что мало денег, чтобы вообще начинать", value: "small" },
+                    { text: "Мне не хватает времени разобраться в этом", value: "busy" }
+                ],
+                tip: "💡 Подсказка: Нет «правильного» ответа. Мы просто хотим понять тебя."
+            },
+            {
+                step: "ШАГ 02",
+                icon: "💰",
+                q: "Если бы у тебя сегодня было +100$ — что бы ты сделала?",
+                answers: [
+                    { text: "Потратила бы — давно хотела кое-что купить", value: "spender" },
+                    { text: "Отложила бы на чёрный день в обычный банк", value: "saver" },
+                    { text: "Инвестировала бы — хотя не знаю куда", value: "curious" },
+                    { text: "Заплатила бы долги / закрыла расходы", value: "struggling" }
+                ],
+                tip: "💡 Факт: даже 10$ в месяц — это уже инвестиция, которая работает."
+            },
+            {
+                step: "ШАГ 03",
+                icon: "🚧",
+                q: "Что СЕЙЧАС мешает тебе инвестировать?",
+                answers: [
+                    { text: "Я уверена, что это сложно и только для богатых", value: "belief" },
+                    { text: "Боюсь мошенников и потерять деньги", value: "fear" },
+                    { text: "Просто не знаю, какой первый шаг сделать", value: "confused" },
+                    { text: "Уже пробовала — ничего не получилось", value: "burned" }
+                ],
+                tip: "💡 65% наших студенток начали с нуля и без опыта в инвестициях."
+            },
+            {
+                step: "ШАГ 04",
+                icon: "🌟",
+                q: "Как выглядит твоя финансовая свобода через 10 лет?",
+                answers: [
+                    { text: "Не зависеть ни от кого — мужа, родителей, работы", value: "independent" },
+                    { text: "Путешествовать и не смотреть на ценники", value: "traveler" },
+                    { text: "Рано выйти на пенсию и заниматься тем, что люблю", value: "retire" },
+                    { text: "Иметь подушку безопасности для семьи", value: "secure" }
+                ],
+                tip: "💡 Знание своей цели — это уже 50% успеха."
+            }
+        ];
+
+        // Result types based on dominant answers
+        const resultTypes = {
+            overwhelmed: {
+                name: "🌸 Overwhelmed Начинающая",
+                desc: "Ты хочешь финансовой свободы, но тебе кажется, что мир инвестиций слишком сложный и не для тебя. Это самое распространённое состояние — и именно оно легче всего меняется с правильными шагами.",
+                steps: [
+                    "Начни с малого: 10$/месяц уже формируют привычку",
+                    "Пройди базовый курс без финансового жаргона",
+                    "Получи персональный план из 5 шагов для старта"
+                ]
+            },
+            burned: {
+                name: "🔥 Burned Believer",
+                desc: "Ты уже пробовала — и что-то пошло не так. Возможно, плохой совет или неудачный опыт. Но это не значит, что инвестиции не работают. Это значит, что тебе нужна другая система.",
+                steps: [
+                    "Разберись, что именно пошло не так в прошлый раз",
+                    "Изучи защитные стратегии для начинающих инвесторов",
+                    "Начни заново с проверенным методом и поддержкой"
+                ]
+            },
+            small: {
+                name: "💎 Secret Saver",
+                desc: "Ты думаешь, что слишком мало зарабатываешь, чтобы инвестировать. Но именно маленькие регулярные инвестиции — это секрет богатства большинства успешных людей. Время важнее суммы.",
+                steps: [
+                    "Узнай, как инвестировать от 10$/месяц эффективно",
+                    "Подсчитай, сколько у тебя будет через 10 лет",
+                    "Настрой автоматические инвестиции — «забудь и расти»"
+                ]
+            },
+            fear: {
+                name: "🛡️ Careful Dreamer",
+                desc: "Ты мечтаешь о финансовой независимости, но страх потери останавливает тебя. Это нормально — и именно поэтому важно знать, какие инструменты реально безопасны для новичков.",
+                steps: [
+                    "Изучи разницу между риском и умным риском",
+                    "Начни с консервативных инструментов с защитой капитала",
+                    "Постепенно расширяй портфель по мере уверенности"
+                ]
+            }
+        };
+
+        // === STATE ===
+        let currentStep = 0;
+        let isAnalyzing = false;
+        let isResult = false;
+        let answerValues = [];
+
+        // === HEARTS ===
+        function createHearts() {
+            const container = document.getElementById('heartsBg');
+            const emojis = ['💕', '💰', '✨', '🌸', '💎'];
+            for (let i = 0; i < 15; i++) {
+                const el = document.createElement('div');
+                el.className = 'heart-float';
+                el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                el.style.left = Math.random() * 100 + '%';
+                el.style.animationDuration = (12 + Math.random() * 16) + 's';
+                el.style.animationDelay = (Math.random() * 15) + 's';
+                el.style.fontSize = (14 + Math.random() * 18) + 'px';
+                container.appendChild(el);
+            }
+        }
+
+        // === PROGRESS ===
+        function updateProgress() {
+            const pct = (currentStep / questions.length) * 100;
+            document.getElementById('progressFill').style.width = pct + '%';
+        }
+
+        // === RENDER QUESTION ===
+        function renderQuestion(index) {
+            const q = questions[index];
+            const card = document.getElementById('quizCard');
+            card.innerHTML = `
+                <div class="slide-in">
+                    <div class="step-badge">${q.icon} ${q.step}</div>
+                    <h2 class="question-text">${q.q}</h2>
+                    <div class="answers-grid">
+                        ${q.answers.map((a, i) => `
+                            <button class="answer-btn" onclick="selectAnswer('${a.value}')">
+                                ${a.text}
+                                <span class="arrow">→</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div class="tip-box">${q.tip}</div>
+                </div>
+            `;
+        }
+
+        // === SELECT ANSWER ===
+        function selectAnswer(value) {
+            answerValues.push(value);
+            currentStep++;
+            updateProgress();
+
+            if (currentStep >= questions.length) {
+                showAnalyzing();
+            } else {
+                renderQuestion(currentStep);
+            }
+        }
+
+        // === ANALYZING ===
+        function showAnalyzing() {
+            document.getElementById('quizHeader').style.display = 'none';
+            document.getElementById('progressTrack').style.display = 'none';
+            document.getElementById('socialProof').style.display = 'none';
+
+            const card = document.getElementById('quizCard');
+            const steps = [
+                "Анализируем твои ответы...",
+                "Определяем твой финансовый тип...",
+                "Формируем персональный план...",
+                "Готово! Результат получен. ✅"
+            ];
+
+            card.innerHTML = `
+                <div class="analyzing-screen fade-in">
+                    <div class="spinner"></div>
+                    <div class="analyzing-title">Анализируем твой профиль...</div>
+                    <div class="progress-fake"><div class="progress-fake-fill"></div></div>
+                    <div class="analyzing-status" id="statusText">${steps[0]}</div>
+                </div>
+            `;
+
+            let i = 0;
+            const interval = setInterval(() => {
+                i++;
+                if (i < steps.length) {
+                    document.getElementById('statusText').textContent = steps[i];
+                } else {
+                    clearInterval(interval);
+                    setTimeout(showResult, 600);
+                }
+            }, 900);
+        }
+
+        // === DETERMINE RESULT TYPE ===
+        function getResultType() {
+            const counts = {};
+            answerValues.forEach(v => counts[v] = (counts[v] || 0) + 1);
+            let top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+            // Map to result types
+            const map = {
+                burned: 'burned', overwhelmed: 'overwhelmed', small: 'small',
+                belief: 'small', fear: 'fear', confused: 'overwhelmed',
+                spender: 'overwhelmed', saver: 'small', curious: 'small',
+                struggling: 'overwhelmed', independent: 'overwhelmed',
+                traveler: 'overwhelmed', retire: 'small', secure: 'fear',
+                busy: 'overwhelmed'
+            };
+            return resultTypes[map[top] || 'overwhelmed'];
+        }
+
+        // === SHOW RESULT ===
+        function showResult() {
+            const result = getResultType();
+            const card = document.getElementById('quizCard');
+
+            card.innerHTML = `
+                <div class="result-screen fade-in">
+                    <div>
+                        <div class="result-badge">✅ Твой результат</div>
+                        <div class="result-type">${result.name}</div>
+                    </div>
+                    <p class="result-desc">${result.desc}</p>
+                    <hr class="result-divider">
+                    <div>
+                        <div class="result-path-title">📍 Твой персональный путь</div>
+                        <div class="result-steps">
+                            ${result.steps.map((s, i) => `
+                                <div class="result-step">
+                                    <div class="step-num">${i + 1}</div>
+                                    <span>${s}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="lead-form">
+                        <h3>💌 Получи полный план на email</h3>
+                        <input type="text" id="nameInput" placeholder="Твоё имя" autocomplete="given-name" />
+                        <input type="email" id="emailInput" placeholder="Твой email" autocomplete="email" />
+                        <button class="cta-btn" onclick="submitLead()">
+                            Отправить мой план →
+                        </button>
+                        <p class="privacy-note">Мы не рассылаем спам. Только твой результат.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // === SUBMIT ===
+        function submitLead() {
+            const name = document.getElementById('nameInput').value.trim();
+            const email = document.getElementById('emailInput').value.trim();
+
+            if (!name || !email) {
+                alert('Пожалуйста, заполни имя и email 💕');
+                return;
+            }
+
+            // TODO: connect to your backend / email service
+            console.log('Lead:', { name, email, answers: answerValues });
+
+            const card = document.getElementById('quizCard');
+            card.innerHTML = `
+                <div class="analyzing-screen fade-in">
+                    <div style="font-size: 4rem">🎉</div>
+                    <div class="analyzing-title">Готово, ${name}!</div>
+                    <p style="font-size: 1rem; font-weight: 600; opacity: 0.7; line-height: 1.6; text-align: center;">
+                        Твой персональный план уже летит на <strong>${email}</strong>.<br>
+                        Первый шаг к финансовой свободе — уже сделан. 💕
+                    </p>
+                    <a href="calculator-ru.html" style="display: inline-block; margin-top: 12px; padding: 14px 28px; background: var(--pink); color: white; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 0.95rem; border: 2px solid var(--dark); box-shadow: 3px 3px 0 var(--dark);">
+                        Узнай, сколько ты заработаешь → 💰
+                    </a>
+                </div>
+            `;
+        }
+
+        // === INIT ===
+        createHearts();
+        updateProgress();
+        renderQuestion(0);
+    </script>
+</body>
+</html>
