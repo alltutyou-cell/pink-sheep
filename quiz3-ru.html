@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Какая твоя главная денежная ложь?</title>
+    <meta name="description" content="Узнай, какое ложное убеждение держит тебя в финансовой ловушке. Пройди тест — и получи ключ к свободе.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --pink: #e91e8c;
+            --pink-light: #ff69b4;
+            --pink-pale: #ffe4f0;
+            --pink-bg: #fff0f7;
+            --dark: #1a0a10;
+            --red: #ff4a22;
+            --gold: #f5c518;
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: var(--pink-bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* Floating background */
+        .bg-floats {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .float-item {
+            position: absolute;
+            opacity: 0.12;
+            animation: floatUp linear infinite;
+            font-size: 22px;
+        }
+
+        @keyframes floatUp {
+            from { transform: translateY(110vh) rotate(0deg); opacity: 0.12; }
+            to   { transform: translateY(-10vh) rotate(180deg); opacity: 0; }
+        }
+
+        /* wrapper */
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 580px;
+        }
+
+        /* Header */
+        .quiz-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .quiz-header .eyebrow {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--pink);
+            border: 1.5px solid var(--pink);
+            padding: 3px 14px;
+            border-radius: 99px;
+            margin-bottom: 12px;
+        }
+
+        .quiz-header h1 {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.5rem, 5vw, 2.1rem);
+            color: var(--dark);
+            line-height: 1.3;
+        }
+
+        .quiz-header h1 em {
+            color: var(--pink);
+            font-style: normal;
+        }
+
+        /* Progress */
+        .progress-track {
+            height: 6px;
+            background: rgba(233,30,140,0.15);
+            border-radius: 99px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--pink), var(--pink-light));
+            border-radius: 99px;
+            transition: width 0.5s ease;
+        }
+
+        /* Card */
+        .card {
+            background: white;
+            border: 3px solid var(--dark);
+            border-radius: 20px;
+            padding: clamp(24px, 6vw, 48px);
+            box-shadow: 8px 8px 0px var(--pink);
+            min-height: 440px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::after {
+            content: '🚫';
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 2.5rem;
+            opacity: 0.06;
+        }
+
+        /* Step badge */
+        .step-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--red);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 20px;
+        }
+
+        .question {
+            font-size: clamp(1.3rem, 4.5vw, 2rem);
+            font-weight: 700;
+            color: var(--dark);
+            line-height: 1.3;
+            margin-bottom: 28px;
+        }
+
+        .question em {
+            color: var(--pink);
+            font-style: normal;
+        }
+
+        /* Yes/No style answers */
+        .yn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .yn-btn {
+            padding: 20px 16px;
+            border: 2.5px solid var(--dark);
+            border-radius: 14px;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            background: white;
+        }
+
+        .yn-btn .yn-icon { font-size: 1.8rem; }
+        .yn-btn .yn-label { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+        .yn-btn.yes:hover { background: #dcfce7; border-color: #22c55e; color: #166534; }
+        .yn-btn.no:hover  { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+        .yn-btn.maybe:hover { background: var(--pink-pale); border-color: var(--pink); color: var(--pink); }
+
+        /* Multi-answer */
+        .answers-col {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .ans-btn {
+            width: 100%;
+            text-align: left;
+            padding: 15px 20px;
+            border: 2.5px solid var(--dark);
+            border-radius: 12px;
+            background: white;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--dark);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .ans-btn:hover {
+            background: var(--pink);
+            color: white;
+            border-color: var(--pink);
+            transform: translateX(4px);
+        }
+
+        /* Tip */
+        .tip {
+            padding: 12px 16px;
+            background: var(--pink-pale);
+            border-left: 4px solid var(--pink);
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-top: 16px;
+        }
+
+        /* Analyzing */
+        .analyzing {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 18px;
+            padding: 32px 0;
+        }
+
+        .spinner {
+            width: 56px; height: 56px;
+            border: 5px solid var(--pink-pale);
+            border-top-color: var(--pink);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .analyzing-title { font-size: 1.2rem; font-weight: 700; text-transform: uppercase; }
+        .analyzing-status { font-size: 0.85rem; font-weight: 600; color: var(--pink); font-style: italic; }
+
+        .fake-bar { width: 100%; height: 7px; background: var(--pink-pale); border-radius: 99px; overflow: hidden; }
+        .fake-fill { height: 100%; background: var(--pink); border-radius: 99px; animation: fakeLoad 4.5s ease-in-out forwards; }
+        @keyframes fakeLoad {
+            0% { width: 0%; } 25% { width: 35%; } 55% { width: 65%; } 80% { width: 85%; } 100% { width: 100%; }
+        }
+
+        /* RESULT */
+        .result-screen { display: flex; flex-direction: column; gap: 18px; }
+
+        .lie-reveal {
+            padding: 20px;
+            background: #fff0f0;
+            border: 2.5px solid var(--red);
+            border-radius: 14px;
+            text-align: center;
+        }
+
+        .lie-reveal .lie-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--red);
+            margin-bottom: 8px;
+        }
+
+        .lie-reveal .lie-name {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.4rem, 5vw, 2rem);
+            color: var(--dark);
+            line-height: 1.2;
+        }
+
+        .lie-desc {
+            font-size: 0.95rem;
+            font-weight: 600;
+            line-height: 1.65;
+            color: var(--dark);
+            opacity: 0.8;
+        }
+
+        .truth-box {
+            padding: 18px 20px;
+            background: #f0fdf4;
+            border: 2px solid #22c55e;
+            border-radius: 14px;
+        }
+
+        .truth-box .truth-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #16a34a;
+            margin-bottom: 8px;
+        }
+
+        .truth-box .truth-text {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--dark);
+            line-height: 1.5;
+        }
+
+        /* Score meter */
+        .belief-meter {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .meter-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0.5;
+        }
+
+        .meter-track {
+            height: 10px;
+            background: var(--pink-pale);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--pink-light), var(--pink));
+            border-radius: 99px;
+            transition: width 1s ease;
+        }
+
+        /* Lead form */
+        .lead-form {
+            background: var(--pink-pale);
+            border: 2px solid var(--pink);
+            border-radius: 16px;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .lead-form h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .lead-form input {
+            width: 100%;
+            padding: 13px 16px;
+            border: 2.5px solid var(--dark);
+            border-radius: 10px;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            outline: none;
+            background: white;
+            transition: border-color 0.2s;
+        }
+
+        .lead-form input:focus { border-color: var(--pink); }
+
+        .cta-btn {
+            width: 100%;
+            padding: 17px;
+            background: var(--pink);
+            color: white;
+            border: 3px solid var(--dark);
+            border-radius: 12px;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 4px 4px 0px var(--dark);
+            transition: all 0.15s;
+        }
+
+        .cta-btn:hover { transform: translate(2px,2px); box-shadow: 2px 2px 0px var(--dark); }
+        .cta-btn:active { transform: translate(4px,4px); box-shadow: none; }
+
+        .privacy { text-align: center; font-size: 0.7rem; font-weight: 600; opacity: 0.3; text-transform: uppercase; letter-spacing: 0.08em; }
+
+        .social-proof { text-align: center; margin-top: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; opacity: 0.35; }
+
+        /* Nav pills */
+        .nav-pills {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .nav-pill {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 5px 14px;
+            border: 1.5px solid rgba(233,30,140,0.3);
+            border-radius: 99px;
+            color: var(--pink);
+            text-decoration: none;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .nav-pill:hover { opacity: 1; }
+        .nav-pill.active { background: var(--pink); color: white; border-color: var(--pink); opacity: 1; }
+
+        /* Animations */
+        .slide-in { animation: slideIn 0.4s ease; }
+        @keyframes slideIn { from { opacity:0; transform: translateX(24px); } to { opacity:1; transform: translateX(0); } }
+
+        .fade-in { animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity:0; transform: scale(0.97); } to { opacity:1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div class="bg-floats" id="bgFloats"></div>
+
+    <div class="wrapper">
+
+        <!-- Nav -->
+        <div class="nav-pills">
+            <a href="quiz-ru.html" class="nav-pill">Квиз №1</a>
+            <a href="calculator-ru.html" class="nav-pill">Квиз №2</a>
+            <a href="quiz3-ru.html" class="nav-pill active">Квиз №3</a>
+            <a href="timeline-ru.html" class="nav-pill">Квиз №4</a>
+        </div>
+
+        <!-- Header -->
+        <div class="quiz-header" id="quizHeader">
+            <div class="eyebrow">🚫 Разрушитель убеждений</div>
+            <h1>Какая твоя главная<br><em>денежная ложь?</em></h1>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress-track" id="progressTrack">
+            <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+
+        <!-- Card -->
+        <div class="card" id="mainCard"></div>
+
+        <!-- Social proof -->
+        <div class="social-proof" id="socialProof">
+            Более 5 000 женщин уже разрушили свою денежную ложь 💕
+        </div>
+
+    </div>
+
+    <script>
+    // ─── QUESTIONS ───────────────────────────────────────────────────────
+    const questions = [
+        {
+            step: "ШАГ 01",
+            icon: "🚫",
+            type: "yn3", // yes / no / maybe
+            q: "«Инвестиции — это только для богатых»\nТы веришь в это?",
+            options: [
+                { icon: "✅", label: "Да, верю", value: "rich" },
+                { icon: "❌", label: "Нет, не верю", value: "no_rich" },
+                { icon: "🤔", label: "Не уверена", value: "maybe_rich" }
+            ],
+            tip: "💡 Факт: в индексный фонд S&P 500 можно войти с $1. Порог не в деньгах — в знаниях."
+        },
+        {
+            step: "ШАГ 02",
+            icon: "💸",
+            type: "yn3",
+            q: "«Мне нужны тысячи долларов, чтобы начать инвестировать»\nЭто твоё убеждение?",
+            options: [
+                { icon: "✅", label: "Да, думаю так", value: "thousands" },
+                { icon: "❌", label: "Нет, это неправда", value: "no_thousands" },
+                { icon: "🤔", label: "Раньше думала так", value: "used_to" }
+            ],
+            tip: "💡 Реальность: регулярные $10–50/мес. через 10 лет — это тысячи благодаря сложному проценту."
+        },
+        {
+            step: "ШАГ 03",
+            icon: "😱",
+            type: "yn3",
+            q: "«Я боюсь потерять ВСЁ, если начну инвестировать»\nЭтот страх тебе знаком?",
+            options: [
+                { icon: "✅", label: "Да, очень боюсь", value: "lose_all" },
+                { icon: "❌", label: "Не особо", value: "no_lose" },
+                { icon: "🤔", label: "Иногда думаю об этом", value: "sometimes" }
+            ],
+            tip: "💡 Знаешь что страшнее? Ничего не делать и через 20 лет зависеть от пенсии государства."
+        },
+        {
+            step: "ШАГ 04",
+            icon: "⏳",
+            type: "choice",
+            q: "Когда ты чаще всего говоришь себе «начну позже»?",
+            options: [
+                { text: "Когда зарплата вырастет / будет больше денег", value: "more_money" },
+                { text: "Когда разберусь во всём этом как следует", value: "more_knowledge" },
+                { text: "Когда ситуация в стране / мире стабилизируется", value: "world_stable" },
+                { text: "Когда дети вырастут / семья устроится", value: "family_first" }
+            ],
+            tip: "💡 «Идеального момента» не существует. Лучший момент — сейчас."
+        },
+        {
+            step: "ШАГ 05",
+            icon: "🌍",
+            type: "choice",
+            q: "Что ты думаешь об инвестировании в целом?",
+            options: [
+                { text: "Это лотерея — можно выиграть, а можно всё потерять", value: "lottery" },
+                { text: "Это для тех, кто разбирается в экономике и цифрах", value: "experts_only" },
+                { text: "Хочу попробовать, но не знаю с чего начать", value: "want_start" },
+                { text: "Уже инвестирую, просто хочу делать это лучше", value: "already" }
+            ],
+            tip: "💡 Инвестирование — это навык. Как вождение: сначала страшно, потом автоматически."
+        }
+    ];
+
+    // ─── RESULTS ─────────────────────────────────────────────────────────
+    const results = {
+        rich_believer: {
+            lie: "«Инвестиции — только для богатых»",
+            name: "Ложь Богатства",
+            emoji: "💎",
+            desc: "Ты выросла с убеждением, что инвестирование — это привилегия тех, у кого уже есть деньги. Это самая распространённая ложь, которая мешает миллионам женщин начать. Правда в том, что богатство СОЗДАЁТСЯ инвестициями — а не наоборот.",
+            truth: "Ты можешь начать с $10 в месяц сегодня — и через 15 лет иметь больше, чем те, кто «ждал, когда будет больше денег».",
+            beliefScore: 85
+        },
+        fear_loser: {
+            lie: "«Я обязательно всё потеряю»",
+            name: "Ложь Страха",
+            emoji: "😱",
+            desc: "Страх потери парализует тебя сильнее, чем реальный риск. Ты видела или слышала о чьих-то неудачах — и решила, что это твоя судьба тоже. Но неудачи случаются не от инвестиций, а от инвестиций без знаний.",
+            truth: "Диверсификация и правильный инструментарий делают потерю ВСЕГО практически невозможной. Риски существуют, но ими можно управлять.",
+            beliefScore: 75
+        },
+        procrastinator: {
+            lie: "«Начну позже, когда будет лучше время»",
+            name: "Ложь Откладывания",
+            emoji: "⏳",
+            desc: "Ты не против инвестировать — ты просто «не готова ещё». Ждёшь стабильности, знаний, денег, времени. Но каждый месяц ожидания стоит тебе реальных денег. Сложный процент работает только тогда, когда ты начинаешь.",
+            truth: "Каждый месяц промедления с $30/мес. стоит тебе около $150 в будущей прибыли. За год — это $1,800, которых ты лишаешься навсегда.",
+            beliefScore: 90
+        },
+        complexity_myth: {
+            lie: "«Это слишком сложно для меня»",
+            name: "Ложь Сложности",
+            emoji: "🧩",
+            desc: "Ты убеждена, что инвестирование требует диплома экономиста или годов учёбы. Финансовая индустрия намеренно делает это сложным — чтобы ты боялась и обращалась к «экспертам». На самом деле базовые стратегии просты.",
+            truth: "Простая стратегия — регулярно покупать индексный фонд — обгоняет 85% профессиональных управляющих. Просто. Без сложностей.",
+            beliefScore: 70
+        }
+    };
+
+    // ─── STATE ────────────────────────────────────────────────────────────
+    let step = 0;
+    let answers = [];
+
+    // ─── BACKGROUND ───────────────────────────────────────────────────────
+    (function createBg() {
+        const container = document.getElementById('bgFloats');
+        const items = ['💰','🚫','💡','✨','💕','🌸'];
+        for (let i = 0; i < 14; i++) {
+            const el = document.createElement('div');
+            el.className = 'float-item';
+            el.textContent = items[Math.floor(Math.random() * items.length)];
+            el.style.left = Math.random() * 100 + '%';
+            el.style.animationDuration = (14 + Math.random() * 14) + 's';
+            el.style.animationDelay = (Math.random() * 14) + 's';
+            el.style.fontSize = (14 + Math.random() * 16) + 'px';
+            container.appendChild(el);
+        }
+    })();
+
+    // ─── PROGRESS ─────────────────────────────────────────────────────────
+    function setProgress(n, total) {
+        document.getElementById('progressFill').style.width = (n / total * 100) + '%';
+    }
+
+    // ─── RENDER QUESTION ──────────────────────────────────────────────────
+    function renderQ(i) {
+        const q = questions[i];
+        const card = document.getElementById('mainCard');
+
+        let buttonsHtml = '';
+        if (q.type === 'yn3') {
+            buttonsHtml = `<div class="yn-grid">
+                ${q.options.map((o, idx) => `
+                    <button class="yn-btn ${idx===0?'yes':idx===1?'no':'maybe'}"
+                            onclick="pick('${o.value}')">
+                        <span class="yn-icon">${o.icon}</span>
+                        <span class="yn-label">${o.label}</span>
+                    </button>
+                `).join('')}
+            </div>`;
+        } else {
+            buttonsHtml = `<div class="answers-col">
+                ${q.options.map(o => `
+                    <button class="ans-btn" onclick="pick('${o.value}')">
+                        ${o.text} <span>→</span>
+                    </button>
+                `).join('')}
+            </div>`;
+        }
+
+        card.innerHTML = `
+            <div class="slide-in">
+                <div class="step-badge">${q.icon} ${q.step}</div>
+                <h2 class="question">${q.q.replace(/\n/g, '<br>')}</h2>
+                ${buttonsHtml}
+                <div class="tip">${q.tip}</div>
+            </div>
+        `;
+    }
+
+    // ─── PICK ANSWER ──────────────────────────────────────────────────────
+    function pick(value) {
+        answers.push(value);
+        step++;
+        setProgress(step, questions.length);
+
+        if (step >= questions.length) {
+            showAnalyzing();
+        } else {
+            renderQ(step);
+        }
+    }
+
+    // ─── ANALYZING ────────────────────────────────────────────────────────
+    function showAnalyzing() {
+        document.getElementById('quizHeader').style.display = 'none';
+        document.getElementById('progressTrack').style.display = 'none';
+        document.getElementById('socialProof').style.display = 'none';
+
+        const steps = [
+            "Анализируем твои убеждения...",
+            "Ищем корневую ложь...",
+            "Разрабатываем твой антидот...",
+            "✅ Результат готов!"
+        ];
+
+        document.getElementById('mainCard').innerHTML = `
+            <div class="analyzing fade-in">
+                <div class="spinner"></div>
+                <div class="analyzing-title">Анализируем твой денежный профиль...</div>
+                <div class="fake-bar"><div class="fake-fill"></div></div>
+                <div class="analyzing-status" id="statusLine">${steps[0]}</div>
+            </div>
+        `;
+
+        let i = 0;
+        const iv = setInterval(() => {
+            i++;
+            const el = document.getElementById('statusLine');
+            if (el && i < steps.length) el.textContent = steps[i];
+            if (i >= steps.length) { clearInterval(iv); setTimeout(showResult, 500); }
+        }, 950);
+    }
+
+    // ─── DETERMINE RESULT ─────────────────────────────────────────────────
+    function getResult() {
+        // Map dominant answer to result
+        const scores = { rich_believer: 0, fear_loser: 0, procrastinator: 0, complexity_myth: 0 };
+
+        const map = {
+            rich: 'rich_believer', maybe_rich: 'rich_believer',
+            lose_all: 'fear_loser', sometimes: 'fear_loser',
+            more_money: 'procrastinator', world_stable: 'procrastinator',
+            family_first: 'procrastinator', used_to: 'procrastinator',
+            more_knowledge: 'complexity_myth', experts_only: 'complexity_myth',
+            lottery: 'fear_loser',
+            want_start: 'procrastinator', already: 'rich_believer',
+            thousands: 'rich_believer', no_thousands: 'complexity_myth',
+            no_rich: 'complexity_myth', no_lose: 'complexity_myth'
+        };
+
+        answers.forEach(a => { if (map[a]) scores[map[a]]++; });
+        return results[Object.entries(scores).sort((a,b) => b[1]-a[1])[0][0]];
+    }
+
+    // ─── SHOW RESULT ──────────────────────────────────────────────────────
+    function showResult() {
+        const r = getResult();
+        document.getElementById('mainCard').innerHTML = `
+            <div class="result-screen fade-in">
+                <div class="lie-reveal">
+                    <div class="lie-label">🚫 Твоя главная денежная ложь</div>
+                    <div class="lie-name">${r.emoji} ${r.name}</div>
+                </div>
+
+                <p class="lie-desc">${r.desc}</p>
+
+                <div class="truth-box">
+                    <div class="truth-label">✅ Правда вместо лжи</div>
+                    <div class="truth-text">${r.truth}</div>
+                </div>
+
+                <div class="belief-meter">
+                    <div class="meter-label">💊 Сила этого убеждения у тебя: ${r.beliefScore}%</div>
+                    <div class="meter-track">
+                        <div class="meter-fill" id="meterFill" style="width:0%"></div>
+                    </div>
+                </div>
+
+                <div class="lead-form">
+                    <h3>💌 Получи инструкцию, как разрушить эту ложь</h3>
+                    <input type="text" id="nameIn" placeholder="Твоё имя" />
+                    <input type="email" id="emailIn" placeholder="Твой email" />
+                    <button class="cta-btn" onclick="submitLead()">Разрушить ложь и начать →</button>
+                    <p class="privacy">Никакого спама. Только твой персональный антидот.</p>
+                </div>
+
+                <div style="text-align:center">
+                    <a href="calculator-ru.html" style="font-size:0.82rem;font-weight:700;color:var(--pink);text-decoration:none;opacity:0.7;">
+                        → Узнай, сколько потеряешь, продолжая верить в эту ложь
+                    </a>
+                </div>
+            </div>
+        `;
+
+        // Animate meter after a tick
+        setTimeout(() => {
+            const fill = document.getElementById('meterFill');
+            if (fill) fill.style.width = r.beliefScore + '%';
+        }, 100);
+    }
+
+    // ─── SUBMIT ───────────────────────────────────────────────────────────
+    function submitLead() {
+        const name = document.getElementById('nameIn').value.trim();
+        const email = document.getElementById('emailIn').value.trim();
+        if (!name || !email) { alert('Пожалуйста, заполни имя и email 💕'); return; }
+
+        console.log('Lead:', { name, email, answers });
+
+        document.getElementById('mainCard').innerHTML = `
+            <div class="analyzing fade-in">
+                <div style="font-size:4rem">💌</div>
+                <div class="analyzing-title">Отправлено, ${name}!</div>
+                <p style="font-size:0.95rem;font-weight:600;opacity:0.7;line-height:1.6;text-align:center;max-width:340px;">
+                    Твой персональный антидот уже летит на <strong>${email}</strong>.<br>
+                    Первый шаг к правде — уже сделан. 💕
+                </p>
+                <a href="timeline-ru.html" style="display:inline-block;padding:14px 28px;background:var(--pink);color:white;border-radius:12px;font-weight:700;text-decoration:none;font-size:0.9rem;border:2px solid var(--dark);box-shadow:3px 3px 0 var(--dark);">
+                    Построй свою временную линию свободы →
+                </a>
+            </div>
+        `;
+    }
+
+    // ─── INIT ─────────────────────────────────────────────────────────────
+    setProgress(0, questions.length);
+    renderQ(0);
+    </script>
+</body>
+</html>

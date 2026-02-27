@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Твоя временная линия финансовой свободы</title>
+    <meta name="description" content="Введи свои данные — и увидь, как будет выглядеть твоя жизнь через 5, 10 и 20 лет, если начнёшь с $10 в месяц уже сейчас.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --pink: #e91e8c;
+            --pink-light: #ff69b4;
+            --pink-pale: #ffe4f0;
+            --dark: #1a0a10;
+            --gold: #f5c518;
+            --green: #22c55e;
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: var(--dark);
+            color: white;
+            min-height: 100vh;
+        }
+
+        /* ── HERO ── */
+        .hero {
+            position: relative;
+            background: linear-gradient(160deg, #1a0a10 0%, #2d0a22 100%);
+            border-bottom: 4px solid var(--pink);
+            padding: clamp(40px, 8vw, 80px) 20px clamp(32px, 5vw, 56px);
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: -80px; left: 50%;
+            transform: translateX(-50%);
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(233,30,140,0.18) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-tag {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--pink-light);
+            border: 1.5px solid rgba(255,105,180,0.5);
+            padding: 4px 16px;
+            border-radius: 99px;
+            margin-bottom: 18px;
+        }
+
+        .hero h1 {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.9rem, 6vw, 3.4rem);
+            line-height: 1.2;
+            margin-bottom: 14px;
+        }
+
+        .hero h1 em {
+            color: var(--pink);
+            font-style: normal;
+        }
+
+        .hero p {
+            font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+            font-weight: 600;
+            opacity: 0.6;
+            max-width: 520px;
+            margin: 0 auto;
+            line-height: 1.65;
+        }
+
+        /* ── NAV PILLS ── */
+        .nav-pills {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            padding: 20px 16px 0;
+            flex-wrap: wrap;
+        }
+
+        .nav-pill {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 5px 14px;
+            border: 1.5px solid rgba(233,30,140,0.3);
+            border-radius: 99px;
+            color: var(--pink-light);
+            text-decoration: none;
+            opacity: 0.55;
+            transition: opacity 0.2s;
+        }
+
+        .nav-pill:hover { opacity: 1; }
+        .nav-pill.active { background: var(--pink); color: white; border-color: var(--pink); opacity: 1; }
+
+        /* ── FORM SECTION ── */
+        .form-section {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: clamp(32px, 6vw, 60px) 20px 0;
+        }
+
+        .form-section h2 {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.3rem, 4vw, 1.9rem);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .form-section h2 em { color: var(--pink); font-style: normal; }
+
+        .form-subtitle {
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            opacity: 0.45;
+            margin-bottom: 32px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .form-card {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 22px 20px;
+        }
+
+        .form-card label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--pink-light);
+            margin-bottom: 12px;
+        }
+
+        .big-val {
+            font-family: 'Pacifico', cursive;
+            font-size: 1.9rem;
+            color: var(--pink);
+            margin-bottom: 10px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 5px;
+            background: rgba(255,255,255,0.12);
+            border-radius: 99px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px; height: 20px;
+            background: var(--pink);
+            border: 3px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(233,30,140,0.5);
+        }
+
+        .slider-ends {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.68rem;
+            font-weight: 700;
+            opacity: 0.3;
+            margin-top: 6px;
+        }
+
+        /* Freedom goal selector */
+        .goal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .goal-btn {
+            padding: 12px 10px;
+            border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            background: transparent;
+            color: white;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .goal-btn .goal-icon { font-size: 1.4rem; }
+        .goal-btn:hover, .goal-btn.selected {
+            border-color: var(--pink);
+            background: rgba(233,30,140,0.15);
+        }
+
+        /* ── TIMELINE VISUAL ── */
+        .timeline-section {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 32px 20px;
+        }
+
+        .tl-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .tl-header h2 {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.4rem, 4vw, 2rem);
+            margin-bottom: 6px;
+        }
+
+        .tl-header h2 em { color: var(--pink); font-style: normal; }
+
+        .tl-header p {
+            font-size: 0.82rem;
+            font-weight: 600;
+            opacity: 0.45;
+        }
+
+        /* Horizontal timeline */
+        .tl-track {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-bottom: 32px;
+        }
+
+        .tl-line {
+            position: absolute;
+            left: 32px;
+            top: 40px;
+            bottom: 40px;
+            width: 3px;
+            background: linear-gradient(180deg, var(--pink) 0%, rgba(233,30,140,0.2) 100%);
+        }
+
+        @media (min-width: 640px) {
+            .tl-track { flex-direction: row; align-items: flex-start; gap: 0; }
+            .tl-line {
+                left: 0; right: 0; top: 30px; bottom: auto;
+                width: auto; height: 3px;
+                background: linear-gradient(90deg, var(--pink) 0%, rgba(233,30,140,0.2) 100%);
+            }
+        }
+
+        .tl-node {
+            position: relative;
+            flex: 1;
+            padding: 0 12px 0 56px;
+            padding-bottom: 32px;
+        }
+
+        @media (min-width: 640px) {
+            .tl-node {
+                padding: 56px 12px 0;
+                text-align: center;
+            }
+        }
+
+        .tl-dot {
+            position: absolute;
+            left: 20px;
+            top: 28px;
+            width: 24px; height: 24px;
+            background: var(--pink);
+            border: 3px solid var(--dark);
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px rgba(233,30,140,0.3);
+        }
+
+        @media (min-width: 640px) {
+            .tl-dot { left: 50%; top: 20px; transform: translateX(-50%); }
+        }
+
+        .tl-year {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--pink-light);
+            margin-bottom: 8px;
+        }
+
+        .tl-amount {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.3rem, 3.5vw, 1.8rem);
+            color: white;
+            margin-bottom: 6px;
+        }
+
+        .tl-life {
+            font-size: 0.8rem;
+            font-weight: 700;
+            opacity: 0.55;
+            line-height: 1.45;
+        }
+
+        .tl-emoji { font-size: 1.6rem; margin-bottom: 6px; display: block; }
+
+        /* ── CHART ── */
+        .chart-box {
+            background: rgba(255,255,255,0.04);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 24px 20px 20px;
+            margin-bottom: 28px;
+        }
+
+        .chart-box h3 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0.6;
+            margin-bottom: 16px;
+        }
+
+        .chart-canvas-wrap { height: 260px; }
+
+        /* ── STATS ROW ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 480px) { .stats-row { grid-template-columns: 1fr; } }
+
+        .stat-box {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 18px 14px;
+            text-align: center;
+        }
+
+        .stat-box.main-stat { border-color: var(--pink); background: rgba(233,30,140,0.1); }
+
+        .stat-val {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.2rem, 3.5vw, 1.7rem);
+            color: var(--pink);
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .stat-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.45; }
+
+        /* ── LIFE VISION CARD ── */
+        .vision-card {
+            background: linear-gradient(135deg, rgba(233,30,140,0.15), rgba(233,30,140,0.05));
+            border: 2px solid var(--pink);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 28px;
+        }
+
+        .vision-card h3 {
+            font-family: 'Pacifico', cursive;
+            font-size: 1.3rem;
+            margin-bottom: 14px;
+        }
+
+        .vision-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .vision-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            line-height: 1.45;
+            opacity: 0.85;
+        }
+
+        .vision-dot {
+            min-width: 28px; height: 28px;
+            background: var(--pink);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* ── CTA ── */
+        .cta-section {
+            text-align: center;
+            padding: clamp(32px, 6vw, 64px) 20px;
+            border-top: 2px solid rgba(255,255,255,0.07);
+            background: rgba(233,30,140,0.06);
+        }
+
+        .cta-section h2 {
+            font-family: 'Pacifico', cursive;
+            font-size: clamp(1.6rem, 5vw, 2.6rem);
+            margin-bottom: 12px;
+        }
+
+        .cta-section h2 em { color: var(--pink); font-style: normal; }
+
+        .cta-section p {
+            font-size: 1rem;
+            font-weight: 600;
+            opacity: 0.55;
+            max-width: 480px;
+            margin: 0 auto 28px;
+            line-height: 1.65;
+        }
+
+        .cta-big {
+            display: inline-block;
+            padding: 18px 44px;
+            background: var(--pink);
+            color: white;
+            border: 3px solid white;
+            border-radius: 14px;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 6px 6px 0px rgba(255,255,255,0.2);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .cta-big:hover { transform: translate(3px,3px); box-shadow: 3px 3px 0px rgba(255,255,255,0.2); }
+
+        .disclaimer { text-align: center; padding: 20px; font-size: 0.65rem; opacity: 0.25; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <!-- Nav -->
+    <div class="nav-pills">
+        <a href="quiz-ru.html" class="nav-pill">Квиз №1</a>
+        <a href="calculator-ru.html" class="nav-pill">Квиз №2</a>
+        <a href="quiz3-ru.html" class="nav-pill">Квиз №3</a>
+        <a href="timeline-ru.html" class="nav-pill active">Квиз №4</a>
+    </div>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-tag">🗓 Временная линия свободы</div>
+        <h1>Вот как будет выглядеть<br><em>твоя жизнь</em> через 10 лет</h1>
+        <p>Введи свои цифры — и получи персональную карту будущего. Начиная с $10 в месяц.</p>
+    </section>
+
+    <!-- FORM -->
+    <div class="form-section">
+        <h2>Настрой <em>свою</em> временную линию</h2>
+        <p class="form-subtitle">Потяни слайдеры — и всё пересчитается автоматически</p>
+
+        <div class="form-grid">
+
+            <div class="form-card">
+                <label>💵 Сколько в месяц ты готова инвестировать?</label>
+                <div class="big-val" id="monthlyDisp">$30</div>
+                <input type="range" id="monthly" min="10" max="300" step="10" value="30" oninput="recalc()">
+                <div class="slider-ends"><span>$10</span><span>$300</span></div>
+            </div>
+
+            <div class="form-card">
+                <label>🎯 Через сколько лет хочешь выйти на свободу?</label>
+                <div class="big-val" id="yearsDisp">10 лет</div>
+                <input type="range" id="years" min="3" max="25" step="1" value="10" oninput="recalc()">
+                <div class="slider-ends"><span>3 года</span><span>25 лет</span></div>
+            </div>
+
+            <div class="form-card" style="grid-column: 1 / -1">
+                <label>✨ Что значит «свобода» лично для тебя?</label>
+                <div class="goal-grid">
+                    <button class="goal-btn selected" data-goal="travel" onclick="setGoal(this)">
+                        <span class="goal-icon">✈️</span>Путешествовать без оглядки на бюджет
+                    </button>
+                    <button class="goal-btn" data-goal="boss" onclick="setGoal(this)">
+                        <span class="goal-icon">👩‍💻</span>Работать на себя — без начальника
+                    </button>
+                    <button class="goal-btn" data-goal="retire" onclick="setGoal(this)">
+                        <span class="goal-icon">🏖️</span>Выйти на раннюю «пенсию»
+                    </button>
+                    <button class="goal-btn" data-goal="family" onclick="setGoal(this)">
+                        <span class="goal-icon">👨‍👩‍👧</span>Обеспечить семью — не зависеть ни от кого
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TIMELINE VISUAL -->
+    <div class="timeline-section">
+
+        <div class="tl-header">
+            <h2>Твоя <em>карта свободы</em></h2>
+            <p>Если начнёшь инвестировать сегодня — вот что тебя ждёт</p>
+        </div>
+
+        <!-- Timeline nodes -->
+        <div class="tl-track" id="tlTrack">
+            <div class="tl-line"></div>
+            <!-- rendered by JS -->
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-box">
+                <div class="stat-val" id="statInvested">$3,600</div>
+                <div class="stat-label">Ты вложишь всего</div>
+            </div>
+            <div class="stat-box main-stat">
+                <div class="stat-val" id="statFinal">$55,000</div>
+                <div class="stat-label">💰 Итоговая сумма</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val" id="statMultiplier">15x</div>
+                <div class="stat-label">Множитель капитала</div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-box">
+            <h3>📈 Рост капитала по годам</h3>
+            <div class="chart-canvas-wrap">
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Life vision card -->
+        <div class="vision-card" id="visionCard">
+            <!-- rendered by JS -->
+        </div>
+
+    </div>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <h2>Сделай первый шаг<br><em>прямо сейчас</em></h2>
+        <p>Пройди квиз — узнай свой тип финансовой свободы и получи персональный план на email.</p>
+        <a href="quiz-ru.html" class="cta-big">Получить мой план →</a>
+    </section>
+
+    <div class="disclaimer">
+        * Расчёты иллюстративны. Доходность 8%/год (исторический средний S&P 500 после инфляции — ~7%). Реальные результаты зависят от инструментов и рынка.
+    </div>
+
+    <script>
+    let chart;
+    let selectedGoal = 'travel';
+
+    const goalData = {
+        travel: {
+            icon: '✈️',
+            vision5: 'Первая крупная поездка полностью оплачена из дохода от инвестиций',
+            vision10: 'Ты путешествуешь 2–3 месяца в году — без оглядки на ценники',
+            vision20: 'Пассивный доход покрывает всё: жильё, поездки, впечатления',
+            steps: [
+                'Открой брокерский счёт и настрой автоинвестирование',
+                'Первая поездка «на проценты» уже через 3–4 года',
+                'Через 10 лет — инвестиционный доход как вторая зарплата'
+            ]
+        },
+        boss: {
+            icon: '👩‍💻',
+            vision5: 'Твои инвестиции создают «подушку» в 6+ месяцев расходов',
+            vision10: 'Ты можешь уволиться в любой момент — деньги уже работают',
+            vision20: 'Полный пассивный доход — работаешь только потому что хочешь',
+            steps: [
+                'Сначала создай финансовую подушку — 6 месяцев расходов',
+                'Затем инвестируй в портфель с дивидендным доходом',
+                'Когда доход от портфеля = расходам — ты свободна'
+            ]
+        },
+        retire: {
+            icon: '🏖️',
+            vision5: 'Первые $10,000 в портфеле — твой маленький фонд свободы',
+            vision10: 'Ты можешь работать 3–4 дня в неделю без финансового стресса',
+            vision20: 'Ранняя пенсия в реальности — пассивный доход покрывает жизнь',
+            steps: [
+                'Определи свой «FIRE-номер» — сколько нужно для жизни без работы',
+                'Инвестируй агрессивно пока молодая — время работает на тебя',
+                'Переходи на консервативный портфель за 5 лет до цели'
+            ]
+        },
+        family: {
+            icon: '👨‍👩‍👧',
+            vision5: 'Финансовая подушка семьи — никаких кредитов в кризис',
+            vision10: 'Фонд образования детей полностью сформирован',
+            vision20: 'Семья ни от кого не зависит — ни от государства, ни от родни',
+            steps: [
+                'Параллельно инвестируй для себя и для детского фонда',
+                'Страховка + инвестиции = двойная защита семьи',
+                'Передай детям не только деньги, но и финансовую грамотность'
+            ]
+        }
+    };
+
+    function setGoal(btn) {
+        document.querySelectorAll('.goal-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedGoal = btn.dataset.goal;
+        recalc();
+    }
+
+    function compound(m, y, r = 0.08) {
+        const mRate = r / 12;
+        const n = y * 12;
+        if (mRate === 0) return m * n;
+        return m * (Math.pow(1 + mRate, n) - 1) / mRate * (1 + mRate);
+    }
+
+    function fmtK(n) {
+        if (n >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'М';
+        if (n >= 1000) return '$' + Math.round(n / 1000) + 'K';
+        return '$' + Math.round(n);
+    }
+
+    function fmtFull(n) {
+        return '$' + Math.round(n).toLocaleString('ru-RU');
+    }
+
+    function yearLabel(y) {
+        if (y === 1) return '1 год';
+        if (y < 5) return y + ' года';
+        return y + ' лет';
+    }
+
+    function recalc() {
+        const monthly = +document.getElementById('monthly').value;
+        const years = +document.getElementById('years').value;
+
+        document.getElementById('monthlyDisp').textContent = '$' + monthly;
+        document.getElementById('yearsDisp').textContent = yearLabel(years);
+
+        const final = compound(monthly, years);
+        const invested = monthly * years * 12;
+        const mult = (final / invested).toFixed(1);
+
+        document.getElementById('statInvested').textContent = fmtFull(invested);
+        document.getElementById('statFinal').textContent = fmtFull(final);
+        document.getElementById('statMultiplier').textContent = mult + 'x';
+
+        buildTimeline(monthly, years, final);
+        buildVision(monthly, years, final);
+        buildChart(monthly, years);
+    }
+
+    function buildTimeline(monthly, totalYears, finalAmt) {
+        const checkpoints = [];
+        const candidates = [2, 3, 5, 7, 10, 15, 20, 25].filter(y => y <= totalYears);
+
+        // Always show start, middle-ish, and end
+        if (!candidates.includes(totalYears)) candidates.push(totalYears);
+        const picks = candidates.length <= 4 ? candidates : [
+            candidates[0],
+            candidates[Math.floor(candidates.length / 2)],
+            candidates[candidates.length - 1]
+        ];
+
+        picks.forEach(y => checkpoints.push({ y, amt: compound(monthly, y) }));
+
+        const goal = goalData[selectedGoal];
+
+        const visionByYear = (y, total, amt) => {
+            const ratio = y / total;
+            if (ratio <= 0.35) return goal.vision5;
+            if (ratio <= 0.65) return goal.vision10;
+            return goal.vision20;
+        };
+
+        const emojis = ['🌱', '🌿', '🌳', '🏆'];
+
+        const track = document.getElementById('tlTrack');
+        track.innerHTML = '<div class="tl-line"></div>' +
+            checkpoints.map((cp, i) => `
+                <div class="tl-node">
+                    <div class="tl-dot"></div>
+                    <div class="tl-year">Через ${yearLabel(cp.y)}</div>
+                    <span class="tl-emoji">${emojis[Math.min(i, emojis.length-1)]}</span>
+                    <div class="tl-amount">${fmtK(cp.amt)}</div>
+                    <div class="tl-life">${visionByYear(cp.y, totalYears, cp.amt)}</div>
+                </div>
+            `).join('');
+    }
+
+    function buildVision(monthly, years, finalAmt) {
+        const goal = goalData[selectedGoal];
+        const card = document.getElementById('visionCard');
+        card.innerHTML = `
+            <h3>${goal.icon} Твой путь к свободе</h3>
+            <div class="vision-steps">
+                ${goal.steps.map((s, i) => `
+                    <div class="vision-step">
+                        <div class="vision-dot">${i+1}</div>
+                        <span>${s}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function buildChart(monthly, years) {
+        const labels = [];
+        const data = [];
+        const dataInvested = [];
+
+        for (let y = 0; y <= years; y++) {
+            labels.push(y === 0 ? 'Сейчас' : yearLabel(y));
+            data.push(Math.round(compound(monthly, y)));
+            dataInvested.push(monthly * y * 12);
+        }
+
+        if (chart) {
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = data;
+            chart.data.datasets[1].data = dataInvested;
+            chart.update('none');
+            return;
+        }
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Итого с процентами',
+                        data,
+                        borderColor: '#e91e8c',
+                        backgroundColor: 'rgba(233,30,140,0.12)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#e91e8c'
+                    },
+                    {
+                        label: 'Только взносы',
+                        data: dataInvested,
+                        borderColor: 'rgba(255,255,255,0.25)',
+                        backgroundColor: 'rgba(255,255,255,0.04)',
+                        borderWidth: 2,
+                        borderDash: [5,4],
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 2,
+                        pointBackgroundColor: 'rgba(255,255,255,0.3)'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 250 },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1a0a10',
+                        borderColor: '#e91e8c',
+                        borderWidth: 1,
+                        titleColor: '#ff69b4',
+                        bodyColor: 'white',
+                        padding: 12,
+                        callbacks: {
+                            label: ctx => ' ' + ctx.dataset.label + ': $' + ctx.raw.toLocaleString('ru-RU')
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: 'rgba(255,255,255,0.35)', font: { weight: '700', size: 10 }, maxTicksLimit: 8 }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: {
+                            color: 'rgba(255,255,255,0.35)',
+                            font: { weight: '700', size: 10 },
+                            callback: v => v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    recalc();
+    </script>
+</body>
+</html>
