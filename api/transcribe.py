@@ -10,6 +10,7 @@ import requests
 
 NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
 NOTION_DB_ID = "5770bdb8e46a4c248d8b227c0fb5fec3"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 
 def extract_video_id(url):
@@ -32,6 +33,35 @@ def get_video_title(video_id):
     return f"Video {video_id}", ""
 
 
+def translate_title(title):
+    """Translate video title to English using Groq LLM."""
+    if not GROQ_API_KEY or not title:
+        return ""
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "llama-3.1-8b-instant",
+                "messages": [
+                    {"role": "system", "content": "Translate the following video title to English. Return ONLY the translated title, nothing else."},
+                    {"role": "user", "content": title},
+                ],
+                "temperature": 0.1,
+                "max_tokens": 200,
+            },
+            timeout=10,
+        )
+        if r.status_code == 200:
+            return r.json()["choices"][0]["message"]["content"].strip()
+    except Exception:
+        pass
+    return ""
+
+
 def save_to_notion(title, url, channel, transcript, lang_code, duration=0):
     if not NOTION_TOKEN:
         return False, "NOTION_TOKEN not set"
@@ -41,15 +71,19 @@ def save_to_notion(title, url, channel, transcript, lang_code, duration=0):
     dur_str = f"{mins} min" if mins else ""
     snippet = transcript[:1900]
 
+    # Translate title to English
+    eng_title = translate_title(title) if lang != "English" else title
+
     page = {
         "parent": {"database_id": NOTION_DB_ID},
         "properties": {
-            "Video Title": {"title": [{"text": {"content": title[:200]}}]},
-            "Video URL":   {"url": url},
-            "Channel":     {"rich_text": [{"text": {"content": channel[:200]}}]},
-            "Language":    {"select": {"name": lang}},
-            "Duration":    {"rich_text": [{"text": {"content": dur_str}}]},
-            "Transcript":  {"rich_text": [{"text": {"content": snippet}}]},
+            "Video Title":   {"title": [{"text": {"content": title[:200]}}]},
+            "English Title": {"rich_text": [{"text": {"content": eng_title[:200]}}]},
+            "Video URL":     {"url": url},
+            "Channel":       {"rich_text": [{"text": {"content": channel[:200]}}]},
+            "Language":      {"select": {"name": lang}},
+            "Duration":      {"rich_text": [{"text": {"content": dur_str}}]},
+            "Transcript":    {"rich_text": [{"text": {"content": snippet}}]},
         },
         "children": [
             {
