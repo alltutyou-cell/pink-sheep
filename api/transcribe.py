@@ -63,14 +63,29 @@ def get_captions(video_id):
     return None, None
 
 
+def get_direct_audio_url(url):
+    """Use pytubefix to extract a direct CDN audio URL (no download needed)."""
+    from pytubefix import YouTube
+    yt = YouTube(url)
+    stream = (
+        yt.streams.filter(only_audio=True, file_extension="mp4").order_by("abr").last()
+        or yt.streams.filter(only_audio=True).first()
+    )
+    if not stream:
+        raise RuntimeError("No audio stream found for this video.")
+    return stream.url
+
+
 def transcribe_with_assemblyai(url):
-    """Submit YouTube URL to AssemblyAI — they handle the download server-side."""
+    """Get direct audio CDN URL via pytubefix, then transcribe with AssemblyAI."""
     if not ASSEMBLYAI_KEY:
         raise RuntimeError(
             "This video has no YouTube captions. "
-            "Add ASSEMBLYAI_KEY in Vercel env vars to enable AI transcription. "
-            "Free signup at assemblyai.com (5 hours/month free)."
+            "Add ASSEMBLYAI_KEY in Vercel env vars to enable AI transcription."
         )
+
+    # Get the direct CDN audio URL — AssemblyAI will download from there
+    audio_url = get_direct_audio_url(url)
 
     headers = {"authorization": ASSEMBLYAI_KEY, "content-type": "application/json"}
 
@@ -78,7 +93,7 @@ def transcribe_with_assemblyai(url):
     submit = requests.post(
         "https://api.assemblyai.com/v2/transcript",
         headers=headers,
-        json={"audio_url": url, "language_detection": True, "speech_models": ["universal-2"]},
+        json={"audio_url": audio_url, "language_detection": True, "speech_models": ["universal-2"]},
         timeout=15,
     )
     if submit.status_code != 200:
