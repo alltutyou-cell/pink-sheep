@@ -278,6 +278,8 @@
           (t ? `"${t}" · ` : "") + "Source: YouTube captions";
         if (saveData.notion_saved) {
           document.getElementById("notion-badge").classList.add("visible");
+        } else if (saveData.notion_error) {
+          showError("Notion: " + saveData.notion_error);
         }
       }
 

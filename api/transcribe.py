@@ -34,7 +34,7 @@ def get_video_title(video_id):
 
 def save_to_notion(title, url, channel, transcript, lang_code, duration=0):
     if not NOTION_TOKEN:
-        return False
+        return False, "NOTION_TOKEN not set"
 
     lang    = "Russian" if lang_code and lang_code.startswith("ru") else "English"
     mins    = int(duration // 60) if duration else 0
@@ -75,7 +75,9 @@ def save_to_notion(title, url, channel, transcript, lang_code, duration=0):
         json=page,
         timeout=15,
     )
-    return r.status_code == 200
+    if r.status_code == 200:
+        return True, ""
+    return False, f"Notion {r.status_code}: {r.text[:300]}"
 
 
 class handler(BaseHTTPRequestHandler):
@@ -108,13 +110,16 @@ class handler(BaseHTTPRequestHandler):
             # Use title/channel from Apify if provided; fall back to oEmbed
             if not title:
                 title, channel = get_video_title(video_id)
-            notion_saved = save_to_notion(title, url, channel, transcript, lang, duration)
+            notion_saved, notion_err = save_to_notion(title, url, channel, transcript, lang, duration)
 
-            self._respond(200, {
+            resp = {
                 "title":        title,
                 "channel":      channel,
                 "notion_saved": notion_saved,
-            })
+            }
+            if notion_err:
+                resp["notion_error"] = notion_err
+            self._respond(200, resp)
 
         except Exception as exc:
             self._respond(500, {"error": str(exc)})
