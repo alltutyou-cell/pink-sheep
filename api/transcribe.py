@@ -35,24 +35,64 @@ def get_video_title(video_id):
 
 
 def get_captions(video_id):
-    """Try YouTube captions (manual + auto-generated). Returns (text, lang_code) or (None, None)."""
+    """Fetch captions directly from the YouTube page (no library, no bot detection)."""
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
     try:
-        from youtube_transcript_api import YouTubeTranscriptApi
-        api = YouTubeTranscriptApi()          # v1.x requires instance
+        import json as _json
 
-        # 1. try to get any available transcript
-        t_list = api.list(video_id)
-        for t in t_list:
-            try:
-                fetched = api.fetch(video_id, languages=[t.language_code])
-                text = " ".join(s.text.replace("\n", " ") for s in fetched)
-                return text, t.language_code
-            except Exception:
-                continue
+        r = requests.get(
+            f"https://www.youtube.com/watch?v={video_id}",
+            headers=headers,
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return None, None
+
+        # Extract the embedded player response JSON
+        idx = r.text.find("ytInitialPlayerResponse =")
+        if idx == -1:
+            return None, None
+        start = r.text.index("{", idx)
+        data, _ = _json.JSONDecoder().raw_decode(r.text, start)
+
+        tracks = (
+            data.get("captions", {})
+                .get("playerCaptionsTracklistRenderer", {})
+                .get("captionTracks", [])
+        )
+        if not tracks:
+            return None, None
+
+        # Prefer manual captions; fall back to auto-generated
+        track = next((t for t in tracks if not t.get("kind")), tracks[0])
+        lang  = track.get("languageCode", "unknown")
+        url   = track.get("baseUrl", "")
+        if not url:
+            return None, None
+
+        cap_r = requests.get(url + "&fmt=json3", headers=headers, timeout=10)
+        if cap_r.status_code != 200:
+            return None, None
+
+        events = cap_r.json().get("events", [])
+        parts = [
+            seg.get("utf8", "").replace("\n", " ")
+            for ev in events
+            for seg in ev.get("segs", [])
+        ]
+        text = " ".join(p for p in parts if p.strip())
+        return (text, lang) if text else (None, None)
 
     except Exception:
-        pass
-    return None, None
+        return None, None
 
 
 def get_direct_audio_url(url):
