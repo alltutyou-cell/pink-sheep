@@ -38,25 +38,17 @@ def get_captions(video_id):
     """Try YouTube captions (manual + auto-generated). Returns (text, lang_code) or (None, None)."""
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        api = YouTubeTranscriptApi()          # v1.x requires instance
 
-        # 1. try manual transcripts first
-        try:
-            t = transcript_list.find_manually_created_transcript(
-                ["en", "ru", "uk", "de", "fr", "es", "pt", "it", "pl", "tr"]
-            )
-            entries = t.fetch()
-            return " ".join(e["text"].replace("\n", " ") for e in entries), t.language_code
-        except Exception:
-            pass
-
-        # 2. try any auto-generated transcript
-        try:
-            for t in transcript_list:
-                entries = t.fetch()
-                return " ".join(e["text"].replace("\n", " ") for e in entries), t.language_code
-        except Exception:
-            pass
+        # 1. try to get any available transcript
+        t_list = api.list(video_id)
+        for t in t_list:
+            try:
+                fetched = api.fetch(video_id, languages=[t.language_code])
+                text = " ".join(s.text.replace("\n", " ") for s in fetched)
+                return text, t.language_code
+            except Exception:
+                continue
 
     except Exception:
         pass
