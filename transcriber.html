@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>YouTube Transcriber — UP2U</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+      color: #1a1a1a;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+      padding: 36px 40px;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { color: #666; font-size: .9rem; margin-bottom: 28px; }
+
+    label { display: block; font-weight: 600; font-size: .85rem; margin-bottom: 6px; color: #444; }
+
+    .url-row { display: flex; gap: 8px; margin-bottom: 20px; }
+    .url-row input {
+      flex: 1;
+      padding: 11px 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      transition: border .2s;
+    }
+    .url-row input:focus { border-color: #6c47ff; }
+
+    .btn-paste {
+      padding: 11px 16px;
+      background: #f0f0f0;
+      border: 1.5px solid #ddd;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: .9rem;
+      white-space: nowrap;
+    }
+    .btn-paste:hover { background: #e5e5e5; }
+
+    .btn-go {
+      width: 100%;
+      padding: 14px;
+      background: #6c47ff;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s, transform .1s;
+      margin-bottom: 20px;
+    }
+    .btn-go:hover:not(:disabled) { background: #5535e0; }
+    .btn-go:active:not(:disabled) { transform: scale(.98); }
+    .btn-go:disabled { background: #b8a8f0; cursor: not-allowed; }
+
+    /* status */
+    .status {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: #f8f5ff;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      font-size: .9rem;
+      color: #5535e0;
+    }
+    .status.visible { display: flex; }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid #d0c4ff;
+      border-top-color: #6c47ff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* notion badge */
+    .notion-badge {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: #edfaf1;
+      border-radius: 8px;
+      color: #1a7a40;
+      font-size: .85rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .notion-badge.visible { display: flex; }
+
+    /* output */
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .output-label { font-weight: 600; font-size: .85rem; color: #444; }
+    .btn-copy {
+      padding: 6px 14px;
+      background: #f0f0f0;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: .82rem;
+      cursor: pointer;
+    }
+    .btn-copy:hover { background: #e5e5e5; }
+    .btn-copy.copied { background: #edfaf1; border-color: #7ed9a8; color: #1a7a40; }
+
+    textarea {
+      width: 100%;
+      min-height: 300px;
+      padding: 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 10px;
+      font-size: .93rem;
+      line-height: 1.65;
+      resize: vertical;
+      outline: none;
+      background: #fafafa;
+      color: #1a1a1a;
+      font-family: inherit;
+    }
+    textarea:focus { border-color: #6c47ff; }
+
+    .error {
+      display: none;
+      padding: 12px 16px;
+      background: #fff0f0;
+      border-radius: 10px;
+      color: #c0392b;
+      font-size: .88rem;
+      margin-bottom: 16px;
+    }
+    .error.visible { display: block; }
+
+    .method-tag {
+      font-size: .75rem;
+      color: #999;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>YouTube Transcriber</h1>
+  <p class="subtitle">Paste a YouTube link — get the transcript, saved automatically to Notion.</p>
+
+  <label for="url-input">YouTube URL</label>
+  <div class="url-row">
+    <input id="url-input" type="url" placeholder="https://youtu.be/..." />
+    <button class="btn-paste" onclick="pasteUrl()">Paste</button>
+  </div>
+
+  <button class="btn-go" id="go-btn" onclick="transcribe()">Transcribe</button>
+
+  <div class="status" id="status">
+    <div class="spinner"></div>
+    <span id="status-text">Working...</span>
+  </div>
+
+  <div class="error" id="error-box"></div>
+
+  <div class="notion-badge" id="notion-badge">
+    ✅ Saved to Notion
+  </div>
+
+  <div class="output-header">
+    <span class="output-label">Transcript</span>
+    <button class="btn-copy" id="copy-btn" onclick="copyText()">Copy</button>
+  </div>
+  <textarea id="output" readonly placeholder="Your transcript will appear here..."></textarea>
+  <div class="method-tag" id="method-tag"></div>
+</div>
+
+<script>
+  async function pasteUrl() {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.getElementById("url-input").value = text.trim();
+    } catch {
+      document.getElementById("url-input").focus();
+    }
+  }
+
+  function setStatus(msg) {
+    const el = document.getElementById("status");
+    document.getElementById("status-text").textContent = msg;
+    el.classList.add("visible");
+  }
+
+  function hideStatus() {
+    document.getElementById("status").classList.remove("visible");
+  }
+
+  function showError(msg) {
+    const el = document.getElementById("error-box");
+    el.textContent = "Error: " + msg;
+    el.classList.add("visible");
+  }
+
+  function hideError() {
+    document.getElementById("error-box").classList.remove("visible");
+  }
+
+  async function transcribe() {
+    const url = document.getElementById("url-input").value.trim();
+    if (!url) { alert("Please paste a YouTube URL first."); return; }
+
+    const btn = document.getElementById("go-btn");
+    btn.disabled = true;
+    hideError();
+    document.getElementById("notion-badge").classList.remove("visible");
+    document.getElementById("output").value = "";
+    document.getElementById("method-tag").textContent = "";
+    document.getElementById("copy-btn").classList.remove("copied");
+
+    setStatus("Downloading & transcribing… this may take 1–3 minutes.");
+
+    try {
+      const res = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      const data = await res.json();
+      hideStatus();
+
+      if (!res.ok) {
+        showError(data.error || "Unknown error");
+        return;
+      }
+
+      document.getElementById("output").value = data.transcript || "";
+
+      const methodLabel = data.method === "captions"
+        ? "Source: YouTube captions"
+        : "Source: Groq Whisper AI";
+      document.getElementById("method-tag").textContent =
+        (data.title ? `"${data.title}" · ` : "") + methodLabel;
+
+      if (data.notion_saved) {
+        document.getElementById("notion-badge").classList.add("visible");
+      }
+
+    } catch (err) {
+      hideStatus();
+      showError(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function copyText() {
+    const ta = document.getElementById("output");
+    if (!ta.value) return;
+    navigator.clipboard.writeText(ta.value).then(() => {
+      const btn = document.getElementById("copy-btn");
+      btn.textContent = "Copied!";
+      btn.classList.add("copied");
+      setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 2000);
+    });
+  }
+
+  // allow Enter key in URL field
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("url-input").addEventListener("keydown", e => {
+      if (e.key === "Enter") transcribe();
+    });
+  });
+</script>
+</body>
+</html>
