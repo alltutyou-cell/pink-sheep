@@ -43,8 +43,49 @@ def get_video_title(video_id):
 
 # ── caption sources ───────────────────────────────────────────────────────────
 
-def _captions_via_timedtext(video_id):
-    """Old YouTube timedtext API — lightweight, avoids modern bot detection."""
+def _fetch_timedtext(video_id, lang, kind=""):
+    """Fetch one specific caption track directly from the timedtext CDN."""
+    params = f"v={video_id}&lang={lang}&fmt=json3"
+    if kind:
+        params += f"&kind={kind}"
+    try:
+        r = requests.get(
+            f"https://www.youtube.com/api/timedtext?{params}",
+            headers=_BROWSER_HEADERS,
+            timeout=8,
+        )
+        if r.status_code != 200 or not r.content:
+            return None
+        events = r.json().get("events", [])
+        parts = [
+            seg.get("utf8", "").replace("\n", " ")
+            for ev in events
+            for seg in ev.get("segs", [])
+        ]
+        text = " ".join(p for p in parts if p.strip())
+        return text or None
+    except Exception:
+        return None
+
+
+def _captions_via_timedtext_direct(video_id):
+    """Skip the list API — directly probe common languages for ASR and manual captions.
+    The old list endpoint doesn't return auto-generated (ASR) tracks, so we try them blindly."""
+    langs = ["ru", "en", "uk", "de", "fr", "es", "it", "pt", "zh", "ja", "ko"]
+    # ASR (auto-generated) first, then manual
+    for lang in langs:
+        text = _fetch_timedtext(video_id, lang, kind="asr")
+        if text:
+            return text, lang
+    for lang in langs:
+        text = _fetch_timedtext(video_id, lang, kind="")
+        if text:
+            return text, lang
+    return None, None
+
+
+def _captions_via_timedtext_list(video_id):
+    """Old timedtext list API — works for manually uploaded captions."""
     try:
         list_r = requests.get(
             f"https://video.google.com/timedtext?type=list&v={video_id}",
@@ -59,91 +100,26 @@ def _captions_via_timedtext(video_id):
         if not tracks:
             return None, None
 
-        # Prefer manual captions; fall back to auto-generated (kind="asr")
         track = next((t for t in tracks if not t.get("kind")), tracks[0])
         lang  = track.get("lang_code", "unknown")
         name  = track.get("name", "")
         kind  = track.get("kind", "")
 
-        params = f"v={video_id}&lang={lang}&fmt=json3"
-        if name:
-            params += f"&name={name}"
-        if kind:
-            params += f"&kind={kind}"
-
-        cap_r = requests.get(
-            f"https://www.youtube.com/api/timedtext?{params}",
-            headers=_BROWSER_HEADERS,
-            timeout=10,
-        )
-        if cap_r.status_code != 200:
-            return None, None
-
-        events = cap_r.json().get("events", [])
-        parts = [
-            seg.get("utf8", "").replace("\n", " ")
-            for ev in events
-            for seg in ev.get("segs", [])
-        ]
-        text = " ".join(p for p in parts if p.strip())
-        return (text, lang) if text else (None, None)
-    except Exception:
-        return None, None
-
-
-def _captions_via_page(video_id):
-    """Parse the embedded ytInitialPlayerResponse from the YouTube watch page."""
-    try:
-        r = requests.get(
-            f"https://www.youtube.com/watch?v={video_id}",
-            headers=_BROWSER_HEADERS,
-            timeout=15,
-        )
-        if r.status_code != 200:
-            return None, None
-
-        idx = r.text.find("ytInitialPlayerResponse =")
-        if idx == -1:
-            return None, None
-        start = r.text.index("{", idx)
-        data, _ = json.JSONDecoder().raw_decode(r.text, start)
-
-        tracks = (
-            data.get("captions", {})
-                .get("playerCaptionsTracklistRenderer", {})
-                .get("captionTracks", [])
-        )
-        if not tracks:
-            return None, None
-
-        track   = next((t for t in tracks if not t.get("kind")), tracks[0])
-        lang    = track.get("languageCode", "unknown")
-        base_url = track.get("baseUrl", "")
-        if not base_url:
-            return None, None
-
-        cap_r = requests.get(base_url + "&fmt=json3", headers=_BROWSER_HEADERS, timeout=10)
-        if cap_r.status_code != 200:
-            return None, None
-
-        events = cap_r.json().get("events", [])
-        parts = [
-            seg.get("utf8", "").replace("\n", " ")
-            for ev in events
-            for seg in ev.get("segs", [])
-        ]
-        text = " ".join(p for p in parts if p.strip())
+        text = _fetch_timedtext(video_id, lang, kind=kind)
+        if not text and name:
+            # retry without name filter
+            text = _fetch_timedtext(video_id, lang, kind="")
         return (text, lang) if text else (None, None)
     except Exception:
         return None, None
 
 
 def get_captions(video_id):
-    """Try both caption sources. Returns (text, lang_code) or (None, None)."""
-    text, lang = _captions_via_timedtext(video_id)
+    """Try all caption sources. Returns (text, lang_code) or (None, None)."""
+    text, lang = _captions_via_timedtext_direct(video_id)
     if text:
         return text, lang
-    return _captions_via_page(video_id)
+    return _captions_via_timedtext_list(video_id)
 
 
 # ── Notion ────────────────────────────────────────────────────────────────────
