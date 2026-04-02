@@ -2,14 +2,20 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import re
-import tempfile
-import time
 import requests
+import xml.etree.ElementTree as ET
 
-GROQ_API_KEY      = os.environ.get("GROQ_API_KEY", "")
-ASSEMBLYAI_KEY    = os.environ.get("ASSEMBLYAI_KEY", "")
-NOTION_TOKEN      = os.environ.get("NOTION_TOKEN", "")
-NOTION_DB_ID      = "5770bdb8e46a4c248d8b227c0fb5fec3"
+NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
+NOTION_DB_ID = "5770bdb8e46a4c248d8b227c0fb5fec3"
+
+_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+}
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -23,7 +29,8 @@ def get_video_title(video_id):
     """Free YouTube oEmbed – no auth needed."""
     try:
         r = requests.get(
-            f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json",
+            f"https://www.youtube.com/oembed"
+            f"?url=https://www.youtube.com/watch?v={video_id}&format=json",
             timeout=6,
         )
         if r.status_code == 200:
@@ -34,51 +41,41 @@ def get_video_title(video_id):
     return f"Video {video_id}", ""
 
 
-def get_captions(video_id):
-    """Fetch captions directly from the YouTube page (no library, no bot detection)."""
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        ),
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    }
+# ── caption sources ───────────────────────────────────────────────────────────
+
+def _captions_via_timedtext(video_id):
+    """Old YouTube timedtext API — lightweight, avoids modern bot detection."""
     try:
-        import json as _json
-
-        r = requests.get(
-            f"https://www.youtube.com/watch?v={video_id}",
-            headers=headers,
-            timeout=15,
+        list_r = requests.get(
+            f"https://video.google.com/timedtext?type=list&v={video_id}",
+            headers=_BROWSER_HEADERS,
+            timeout=8,
         )
-        if r.status_code != 200:
+        if list_r.status_code != 200 or not list_r.text.strip():
             return None, None
 
-        # Extract the embedded player response JSON
-        idx = r.text.find("ytInitialPlayerResponse =")
-        if idx == -1:
-            return None, None
-        start = r.text.index("{", idx)
-        data, _ = _json.JSONDecoder().raw_decode(r.text, start)
-
-        tracks = (
-            data.get("captions", {})
-                .get("playerCaptionsTracklistRenderer", {})
-                .get("captionTracks", [])
-        )
+        root = ET.fromstring(list_r.text)
+        tracks = root.findall("track")
         if not tracks:
             return None, None
 
-        # Prefer manual captions; fall back to auto-generated
+        # Prefer manual captions; fall back to auto-generated (kind="asr")
         track = next((t for t in tracks if not t.get("kind")), tracks[0])
-        lang  = track.get("languageCode", "unknown")
-        url   = track.get("baseUrl", "")
-        if not url:
-            return None, None
+        lang  = track.get("lang_code", "unknown")
+        name  = track.get("name", "")
+        kind  = track.get("kind", "")
 
-        cap_r = requests.get(url + "&fmt=json3", headers=headers, timeout=10)
+        params = f"v={video_id}&lang={lang}&fmt=json3"
+        if name:
+            params += f"&name={name}"
+        if kind:
+            params += f"&kind={kind}"
+
+        cap_r = requests.get(
+            f"https://www.youtube.com/api/timedtext?{params}",
+            headers=_BROWSER_HEADERS,
+            timeout=10,
+        )
         if cap_r.status_code != 200:
             return None, None
 
@@ -90,81 +87,74 @@ def get_captions(video_id):
         ]
         text = " ".join(p for p in parts if p.strip())
         return (text, lang) if text else (None, None)
-
     except Exception:
         return None, None
 
 
-def get_direct_audio_url(url):
-    """Use pytubefix to extract a direct CDN audio URL (no download needed)."""
-    from pytubefix import YouTube
-    yt = YouTube(url)
-    stream = (
-        yt.streams.filter(only_audio=True, file_extension="mp4").order_by("abr").last()
-        or yt.streams.filter(only_audio=True).first()
-    )
-    if not stream:
-        raise RuntimeError("No audio stream found for this video.")
-    return stream.url
-
-
-def transcribe_with_assemblyai(url):
-    """Get direct audio CDN URL via pytubefix, then transcribe with AssemblyAI."""
-    if not ASSEMBLYAI_KEY:
-        raise RuntimeError(
-            "This video has no YouTube captions. "
-            "Add ASSEMBLYAI_KEY in Vercel env vars to enable AI transcription."
+def _captions_via_page(video_id):
+    """Parse the embedded ytInitialPlayerResponse from the YouTube watch page."""
+    try:
+        r = requests.get(
+            f"https://www.youtube.com/watch?v={video_id}",
+            headers=_BROWSER_HEADERS,
+            timeout=15,
         )
+        if r.status_code != 200:
+            return None, None
 
-    # Get the direct CDN audio URL — AssemblyAI will download from there
-    audio_url = get_direct_audio_url(url)
+        idx = r.text.find("ytInitialPlayerResponse =")
+        if idx == -1:
+            return None, None
+        start = r.text.index("{", idx)
+        data, _ = json.JSONDecoder().raw_decode(r.text, start)
 
-    headers = {"authorization": ASSEMBLYAI_KEY, "content-type": "application/json"}
+        tracks = (
+            data.get("captions", {})
+                .get("playerCaptionsTracklistRenderer", {})
+                .get("captionTracks", [])
+        )
+        if not tracks:
+            return None, None
 
-    # 1. submit
-    submit = requests.post(
-        "https://api.assemblyai.com/v2/transcript",
-        headers=headers,
-        json={"audio_url": audio_url, "language_detection": True, "speech_models": ["universal-2"]},
-        timeout=15,
-    )
-    if submit.status_code != 200:
-        raise RuntimeError(f"AssemblyAI submit error: {submit.text[:200]}")
+        track   = next((t for t in tracks if not t.get("kind")), tracks[0])
+        lang    = track.get("languageCode", "unknown")
+        base_url = track.get("baseUrl", "")
+        if not base_url:
+            return None, None
 
-    transcript_id = submit.json()["id"]
+        cap_r = requests.get(base_url + "&fmt=json3", headers=_BROWSER_HEADERS, timeout=10)
+        if cap_r.status_code != 200:
+            return None, None
 
-    # 2. poll until done (max ~270 s to stay under Vercel's 300 s limit)
-    for _ in range(90):
-        time.sleep(3)
-        poll = requests.get(
-            f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
-            headers=headers,
-            timeout=10,
-        ).json()
+        events = cap_r.json().get("events", [])
+        parts = [
+            seg.get("utf8", "").replace("\n", " ")
+            for ev in events
+            for seg in ev.get("segs", [])
+        ]
+        text = " ".join(p for p in parts if p.strip())
+        return (text, lang) if text else (None, None)
+    except Exception:
+        return None, None
 
-        status = poll.get("status")
-        if status == "completed":
-            text     = poll.get("text", "")
-            lang     = poll.get("language_code", "unknown")
-            duration = poll.get("audio_duration", 0)
-            return text, "", duration, lang   # title & channel via oEmbed below
 
-        if status == "error":
-            raise RuntimeError(f"AssemblyAI error: {poll.get('error', 'unknown')}")
+def get_captions(video_id):
+    """Try both caption sources. Returns (text, lang_code) or (None, None)."""
+    text, lang = _captions_via_timedtext(video_id)
+    if text:
+        return text, lang
+    return _captions_via_page(video_id)
 
-    raise RuntimeError("AssemblyAI transcription timed out.")
 
+# ── Notion ────────────────────────────────────────────────────────────────────
 
 def save_to_notion(title, url, channel, transcript, lang_code, duration):
-    """Save a row + full transcript body to the Notion database."""
     if not NOTION_TOKEN:
         return False
 
-    lang = "Russian" if lang_code and lang_code.startswith("ru") else "English"
-    mins = int(duration // 60) if duration else 0
+    lang    = "Russian" if lang_code and lang_code.startswith("ru") else "English"
+    mins    = int(duration // 60) if duration else 0
     dur_str = f"{mins} min" if mins else ""
-
-    # Notion rich_text max 2000 chars per block – save snippet in property
     snippet = transcript[:1900]
 
     page = {
@@ -185,7 +175,6 @@ def save_to_notion(title, url, channel, transcript, lang_code, duration):
         ],
     }
 
-    # append full transcript in 2000-char chunks
     for i in range(0, len(transcript), 2000):
         page["children"].append({
             "object": "block", "type": "paragraph",
@@ -227,34 +216,31 @@ class handler(BaseHTTPRequestHandler):
             if not video_id:
                 return self._respond(400, {"error": "Invalid YouTube URL."})
 
-            # ── captions first ────────────────────────────────────────────
             transcript, lang = get_captions(video_id)
-            method   = "captions"
-            channel  = ""
-            duration = 0
 
-            if transcript:
-                title, channel = get_video_title(video_id)
-            else:
-                # ── AssemblyAI fallback (handles YouTube download server-side) ──
-                transcript, _, duration, lang = transcribe_with_assemblyai(url)
-                title, channel = get_video_title(video_id)
-                method = "assemblyai"
+            if not transcript:
+                return self._respond(422, {
+                    "error": (
+                        "No captions found for this video. "
+                        "YouTube may have blocked caption access from the server, "
+                        "or this video has no captions enabled. "
+                        "Try a different video, or check that captions are turned on."
+                    )
+                })
 
-            notion_saved = save_to_notion(title, url, channel, transcript, lang, duration)
+            title, channel = get_video_title(video_id)
+            notion_saved   = save_to_notion(title, url, channel, transcript, lang, 0)
 
             self._respond(200, {
                 "transcript":   transcript,
                 "title":        title,
                 "channel":      channel,
-                "method":       method,
+                "method":       "captions",
                 "notion_saved": notion_saved,
             })
 
         except Exception as exc:
             self._respond(500, {"error": str(exc)})
-
-    # ── helpers ───────────────────────────────────────────────────────────────
 
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin",  "*")
@@ -271,4 +257,4 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def log_message(self, *_):
-        pass  # silence access log noise
+        pass
