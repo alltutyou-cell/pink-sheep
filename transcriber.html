@@ -226,9 +226,17 @@
     document.getElementById("error-box").classList.remove("visible");
   }
 
+  function extractVideoId(url) {
+    const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
   async function transcribe() {
     const url = document.getElementById("url-input").value.trim();
     if (!url) { alert("Please paste a YouTube URL first."); return; }
+
+    const videoId = extractVideoId(url);
+    if (!videoId) { alert("That doesn't look like a valid YouTube URL."); return; }
 
     const btn = document.getElementById("go-btn");
     btn.disabled = true;
@@ -238,33 +246,38 @@
     document.getElementById("method-tag").textContent = "";
     document.getElementById("copy-btn").classList.remove("copied");
 
-    setStatus("Downloading & transcribing… this may take 1–3 minutes.");
-
     try {
-      const res = await fetch("/api/transcribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
+      // Step 1: fetch captions via edge function (Cloudflare IPs, not blocked by YouTube)
+      setStatus("Fetching captions from YouTube…");
+      const capRes = await fetch(`/api/captions?v=${videoId}`);
+      const capData = await capRes.json();
 
-      const data = await res.json();
-      hideStatus();
-
-      if (!res.ok) {
-        showError(data.error || "Unknown error");
+      if (!capRes.ok) {
+        hideStatus();
+        showError(capData.error || "Could not fetch captions.");
         return;
       }
 
-      document.getElementById("output").value = data.transcript || "";
+      const { transcript, lang } = capData;
+      document.getElementById("output").value = transcript;
 
-      const methodLabel = data.method === "captions"
-        ? "Source: YouTube captions"
-        : "Source: Groq Whisper AI";
-      document.getElementById("method-tag").textContent =
-        (data.title ? `"${data.title}" · ` : "") + methodLabel;
+      // Step 2: save to Notion via Python function
+      setStatus("Saving to Notion…");
+      const saveRes = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, transcript, lang }),
+      });
 
-      if (data.notion_saved) {
-        document.getElementById("notion-badge").classList.add("visible");
+      const saveData = await saveRes.json();
+      hideStatus();
+
+      if (saveRes.ok) {
+        document.getElementById("method-tag").textContent =
+          (saveData.title ? `"${saveData.title}" · ` : "") + "Source: YouTube captions";
+        if (saveData.notion_saved) {
+          document.getElementById("notion-badge").classList.add("visible");
+        }
       }
 
     } catch (err) {
