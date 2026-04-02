@@ -78,7 +78,7 @@ def transcribe_with_assemblyai(url):
     submit = requests.post(
         "https://api.assemblyai.com/v2/transcript",
         headers=headers,
-        json={"audio_url": url, "language_detection": True},
+        json={"audio_url": url, "language_detection": True, "speech_model": "universal-2"},
         timeout=15,
     )
     if submit.status_code != 200:
