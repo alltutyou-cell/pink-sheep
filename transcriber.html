@@ -269,18 +269,24 @@
         body: JSON.stringify({ url, transcript, lang, title, channel, duration }),
       });
 
-      const saveData = await saveRes.json();
+      let saveData;
+      try {
+        saveData = await saveRes.json();
+      } catch { saveData = {}; }
       hideStatus();
 
-      if (saveRes.ok) {
-        const t = title || saveData.title || "";
+      const t = title || saveData.title || "";
+      if (t) {
         document.getElementById("method-tag").textContent =
-          (t ? `"${t}" · ` : "") + "Source: YouTube captions";
-        if (saveData.notion_saved) {
-          document.getElementById("notion-badge").classList.add("visible");
-        } else if (saveData.notion_error) {
-          showError("Notion: " + saveData.notion_error);
-        }
+          `"${t}" · Source: YouTube captions`;
+      }
+
+      if (!saveRes.ok) {
+        showError("Notion save failed: " + (saveData.error || `HTTP ${saveRes.status}`));
+      } else if (saveData.notion_saved) {
+        document.getElementById("notion-badge").classList.add("visible");
+      } else {
+        showError("Notion: " + (saveData.notion_error || "Unknown save error"));
       }
 
     } catch (err) {
