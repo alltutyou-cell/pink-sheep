@@ -33,15 +33,29 @@ def get_video_title(video_id):
 
 
 def get_captions(video_id):
-    """Try YouTube auto-captions. Returns (text, lang_code) or (None, None)."""
+    """Try YouTube captions (manual + auto-generated). Returns (text, lang_code) or (None, None)."""
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
-        transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
-        # prefer manual, fall back to auto-generated
-        for transcript in transcripts:
-            entries = transcript.fetch()
-            text = " ".join(e["text"].replace("\n", " ") for e in entries)
-            return text, transcript.language_code
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+
+        # 1. try manual transcripts first
+        try:
+            t = transcript_list.find_manually_created_transcript(
+                ["en", "ru", "uk", "de", "fr", "es", "pt", "it", "pl", "tr"]
+            )
+            entries = t.fetch()
+            return " ".join(e["text"].replace("\n", " ") for e in entries), t.language_code
+        except Exception:
+            pass
+
+        # 2. try any auto-generated transcript
+        try:
+            for t in transcript_list:
+                entries = t.fetch()
+                return " ".join(e["text"].replace("\n", " ") for e in entries), t.language_code
+        except Exception:
+            pass
+
     except Exception:
         pass
     return None, None
@@ -57,12 +71,21 @@ def transcribe_with_groq(url):
     tmp_dir  = tempfile.mkdtemp()
     out_tmpl = os.path.join(tmp_dir, "audio.%(ext)s")
 
+    # Try clients in order — android works best on server IPs without PO token
     ydl_opts = {
         "format": "140/bestaudio[ext=m4a]/18/bestaudio",
         "outtmpl": out_tmpl,
         "quiet": True,
         "no_warnings": True,
-        "extractor_args": {"youtube": {"player_client": ["android_vr"]}},
+        "extractor_args": {
+            "youtube": {"player_client": ["android", "android_vr", "web_embedded"]}
+        },
+        "http_headers": {
+            "User-Agent": (
+                "com.google.android.youtube/17.36.4 "
+                "(Linux; U; Android 12; GB) gzip"
+            )
+        },
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
