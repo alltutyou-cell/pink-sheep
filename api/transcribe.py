@@ -3,11 +3,13 @@ import json
 import os
 import re
 import tempfile
+import time
 import requests
 
-GROQ_API_KEY   = os.environ.get("GROQ_API_KEY", "")
-NOTION_TOKEN   = os.environ.get("NOTION_TOKEN", "")
-NOTION_DB_ID   = "5770bdb8e46a4c248d8b227c0fb5fec3"
+GROQ_API_KEY      = os.environ.get("GROQ_API_KEY", "")
+ASSEMBLYAI_KEY    = os.environ.get("ASSEMBLYAI_KEY", "")
+NOTION_TOKEN      = os.environ.get("NOTION_TOKEN", "")
+NOTION_DB_ID      = "5770bdb8e46a4c248d8b227c0fb5fec3"
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -61,66 +63,49 @@ def get_captions(video_id):
     return None, None
 
 
-def transcribe_with_groq(url):
-    """Download audio with yt-dlp, send to Groq Whisper."""
-    if not GROQ_API_KEY:
-        raise RuntimeError("Groq API key not configured.")
+def transcribe_with_assemblyai(url):
+    """Submit YouTube URL to AssemblyAI — they handle the download server-side."""
+    if not ASSEMBLYAI_KEY:
+        raise RuntimeError(
+            "This video has no YouTube captions. "
+            "Add ASSEMBLYAI_KEY in Vercel env vars to enable AI transcription. "
+            "Free signup at assemblyai.com (5 hours/month free)."
+        )
 
-    import yt_dlp
+    headers = {"authorization": ASSEMBLYAI_KEY, "content-type": "application/json"}
 
-    tmp_dir  = tempfile.mkdtemp()
-    out_tmpl = os.path.join(tmp_dir, "audio.%(ext)s")
-
-    # Try clients in order — android works best on server IPs without PO token
-    ydl_opts = {
-        "format": "140/bestaudio[ext=m4a]/18/bestaudio",
-        "outtmpl": out_tmpl,
-        "quiet": True,
-        "no_warnings": True,
-        "extractor_args": {
-            "youtube": {"player_client": ["android", "android_vr", "web_embedded"]}
-        },
-        "http_headers": {
-            "User-Agent": (
-                "com.google.android.youtube/17.36.4 "
-                "(Linux; U; Android 12; GB) gzip"
-            )
-        },
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        duration = info.get("duration", 0)
-        title    = info.get("title", "")
-        channel  = info.get("channel", "")
-
-    # find downloaded file
-    audio_path = None
-    for f in os.listdir(tmp_dir):
-        audio_path = os.path.join(tmp_dir, f)
-        break
-    if not audio_path:
-        raise RuntimeError("Audio download failed.")
-
-    with open(audio_path, "rb") as fh:
-        audio_bytes = fh.read()
-    os.remove(audio_path)
-
-    fname = os.path.basename(audio_path)
-    ext   = fname.rsplit(".", 1)[-1] if "." in fname else "m4a"
-    mime  = {"m4a": "audio/m4a", "webm": "audio/webm", "mp4": "audio/mp4"}.get(ext, "audio/mpeg")
-
-    resp = requests.post(
-        "https://api.groq.com/openai/v1/audio/transcriptions",
-        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-        files={"file": (fname, audio_bytes, mime)},
-        data={"model": "whisper-large-v3", "response_format": "text"},
-        timeout=120,
+    # 1. submit
+    submit = requests.post(
+        "https://api.assemblyai.com/v2/transcript",
+        headers=headers,
+        json={"audio_url": url, "language_detection": True},
+        timeout=15,
     )
-    if resp.status_code != 200:
-        raise RuntimeError(f"Groq error {resp.status_code}: {resp.text[:300]}")
+    if submit.status_code != 200:
+        raise RuntimeError(f"AssemblyAI submit error: {submit.text[:200]}")
 
-    return resp.text.strip(), title, channel, duration
+    transcript_id = submit.json()["id"]
+
+    # 2. poll until done (max ~270 s to stay under Vercel's 300 s limit)
+    for _ in range(90):
+        time.sleep(3)
+        poll = requests.get(
+            f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
+            headers=headers,
+            timeout=10,
+        ).json()
+
+        status = poll.get("status")
+        if status == "completed":
+            text     = poll.get("text", "")
+            lang     = poll.get("language_code", "unknown")
+            duration = poll.get("audio_duration", 0)
+            return text, "", duration, lang   # title & channel via oEmbed below
+
+        if status == "error":
+            raise RuntimeError(f"AssemblyAI error: {poll.get('error', 'unknown')}")
+
+    raise RuntimeError("AssemblyAI transcription timed out.")
 
 
 def save_to_notion(title, url, channel, transcript, lang_code, duration):
@@ -204,10 +189,10 @@ class handler(BaseHTTPRequestHandler):
             if transcript:
                 title, channel = get_video_title(video_id)
             else:
-                # ── Groq fallback ─────────────────────────────────────────
-                transcript, title, channel, duration = transcribe_with_groq(url)
-                lang   = "unknown"
-                method = "groq"
+                # ── AssemblyAI fallback (handles YouTube download server-side) ──
+                transcript, _, duration, lang = transcribe_with_assemblyai(url)
+                title, channel = get_video_title(video_id)
+                method = "assemblyai"
 
             notion_saved = save_to_notion(title, url, channel, transcript, lang, duration)
 
