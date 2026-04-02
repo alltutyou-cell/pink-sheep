@@ -32,11 +32,13 @@ def get_video_title(video_id):
     return f"Video {video_id}", ""
 
 
-def save_to_notion(title, url, channel, transcript, lang_code):
+def save_to_notion(title, url, channel, transcript, lang_code, duration=0):
     if not NOTION_TOKEN:
         return False
 
     lang    = "Russian" if lang_code and lang_code.startswith("ru") else "English"
+    mins    = int(duration // 60) if duration else 0
+    dur_str = f"{mins} min" if mins else ""
     snippet = transcript[:1900]
 
     page = {
@@ -46,6 +48,7 @@ def save_to_notion(title, url, channel, transcript, lang_code):
             "Video URL":   {"url": url},
             "Channel":     {"rich_text": [{"text": {"content": channel[:200]}}]},
             "Language":    {"select": {"name": lang}},
+            "Duration":    {"rich_text": [{"text": {"content": dur_str}}]},
             "Transcript":  {"rich_text": [{"text": {"content": snippet}}]},
         },
         "children": [
@@ -89,6 +92,9 @@ class handler(BaseHTTPRequestHandler):
             url        = body.get("url", "").strip()
             transcript = body.get("transcript", "").strip()
             lang       = body.get("lang", "unknown")
+            title      = body.get("title", "").strip()
+            channel    = body.get("channel", "").strip()
+            duration   = body.get("duration", 0)
 
             if not url:
                 return self._respond(400, {"error": "No URL provided."})
@@ -99,8 +105,10 @@ class handler(BaseHTTPRequestHandler):
             if not video_id:
                 return self._respond(400, {"error": "Invalid YouTube URL."})
 
-            title, channel = get_video_title(video_id)
-            notion_saved   = save_to_notion(title, url, channel, transcript, lang)
+            # Use title/channel from Apify if provided; fall back to oEmbed
+            if not title:
+                title, channel = get_video_title(video_id)
+            notion_saved = save_to_notion(title, url, channel, transcript, lang, duration)
 
             self._respond(200, {
                 "title":        title,

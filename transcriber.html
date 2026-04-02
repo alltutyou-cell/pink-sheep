@@ -247,8 +247,8 @@
     document.getElementById("copy-btn").classList.remove("copied");
 
     try {
-      // Step 1: fetch captions via edge function (Cloudflare IPs, not blocked by YouTube)
-      setStatus("Fetching captions from YouTube…");
+      // Step 1: fetch transcript via Apify (residential proxies, never blocked)
+      setStatus("Fetching transcript… this may take 15–30 seconds.");
       const capRes = await fetch(`/api/captions?v=${videoId}`);
       const capData = await capRes.json();
 
@@ -258,23 +258,24 @@
         return;
       }
 
-      const { transcript, lang } = capData;
+      const { transcript, lang, title, channel, duration } = capData;
       document.getElementById("output").value = transcript;
 
-      // Step 2: save to Notion via Python function
+      // Step 2: save to Notion
       setStatus("Saving to Notion…");
       const saveRes = await fetch("/api/transcribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, transcript, lang }),
+        body: JSON.stringify({ url, transcript, lang, title, channel, duration }),
       });
 
       const saveData = await saveRes.json();
       hideStatus();
 
       if (saveRes.ok) {
+        const t = title || saveData.title || "";
         document.getElementById("method-tag").textContent =
-          (saveData.title ? `"${saveData.title}" · ` : "") + "Source: YouTube captions";
+          (t ? `"${t}" · ` : "") + "Source: YouTube captions";
         if (saveData.notion_saved) {
           document.getElementById("notion-badge").classList.add("visible");
         }
